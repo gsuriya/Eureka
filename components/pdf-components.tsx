@@ -40,6 +40,7 @@ interface Highlight {
   };
   text?: string;
   summary?: string;
+  context?: string;
 }
 
 interface PopupState {
@@ -83,8 +84,11 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
 
   // Load stored highlights on component mount
   useEffect(() => {
+    console.log("PDF Components mounted with paperId:", paperId);
     if (paperId) {
       fetchHighlights();
+    } else {
+      console.log("No paperId provided, cannot fetch highlights");
     }
   }, [paperId]);
 
@@ -175,13 +179,61 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
   const handleHighlightContextMenu = (e: React.MouseEvent, highlight: Highlight) => {
     e.preventDefault();
     
-    // Show popup at the mouse position
+    console.log("Right-click on highlight:", {
+      highlight,
+      paperId,
+      clientX: e.clientX,
+      clientY: e.clientY
+    });
+    
+    // Get the document context to pass to the API for better summaries
+    let context = "";
+    try {
+      // Find all text elements in the current page
+      const pageElement = pageRefs.current[highlight.page - 1];
+      if (pageElement) {
+        const textLayerElements = pageElement.querySelectorAll(".react-pdf__Page__textContent");
+        if (textLayerElements.length > 0) {
+          // Extract text from all text elements
+          const texts = Array.from(textLayerElements)
+            .map(el => el.textContent || "")
+            .filter(text => text.trim().length > 0);
+          context = texts.join(" ");
+          console.log(`Extracted context from page ${highlight.page}: ${context.substring(0, 100)}...`);
+        }
+      }
+    } catch (error) {
+      console.error("Error extracting context from page:", error);
+    }
+    
+    // Calculate position for the popup based on the highlight position
+    // Get the actual highlight DOM element
+    const highlightElement = e.currentTarget as HTMLElement;
+    const highlightRect = highlightElement.getBoundingClientRect();
+    
+    // Position right next to the highlight, aligned with its right edge
+    const popupX = highlightRect.right + 10; // 10px to the right of the highlight
+    const popupY = highlightRect.top; // Aligned with the top of the highlight
+    
+    // But check if this would go off-screen
+    const windowWidth = window.innerWidth;
+    const popupWidth = 400; // Width of the popup including margins
+    
+    // If popup would go off the right edge, place it to the left of the highlight instead
+    const adjustedX = popupX + popupWidth > windowWidth 
+      ? Math.max(10, highlightRect.left - popupWidth - 10) // 10px to the left, but ensure it's not off-screen left
+      : popupX;
+    
+    // Show popup at the calculated position
     setPopup({
       visible: true,
-      highlight,
+      highlight: {
+        ...highlight,
+        context: context || undefined
+      },
       position: { 
-        x: e.clientX, 
-        y: e.clientY 
+        x: adjustedX, 
+        y: popupY 
       }
     });
   };

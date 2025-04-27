@@ -7,12 +7,14 @@ const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || 'papermind';
 
 // Gemini API Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'your_gemini_api_key_here';
+// Remove any trailing characters like % that might be in the key
+const cleanGeminiKey = GEMINI_API_KEY.replace(/%$/, '');
 
 // Initialize MongoDB client
 export const mongoClient = new MongoClient(MONGODB_URI);
 
 // Initialize Gemini API
-export const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+export const genAI = new GoogleGenerativeAI(cleanGeminiKey);
 
 // Database connection function
 export async function connectToDatabase() {

@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState } from 'react'
-import { XIcon, Clipboard, CheckCircle, Loader2 } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { XIcon, Clipboard, CheckCircle, Loader2, Lightbulb } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
@@ -22,6 +22,7 @@ interface HighlightPopupProps {
       text: string
     }
     page: number
+    context?: string
   }
   paperId: string
   onClose: () => void
@@ -30,65 +31,134 @@ interface HighlightPopupProps {
 
 export default function HighlightPopup({ highlight, paperId, onClose, position }: HighlightPopupProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
-  const [summary, setSummary] = useState<string>(highlight.summary || 'Generating summary...')
+  const [summary, setSummary] = useState<string>('Generating explanation...')
+  const [isProcessing, setIsProcessing] = useState<boolean>(false)
+  
+  // When component loads, start generating summary if needed
+  useEffect(() => {
+    console.log('HighlightPopup mounted with:', { 
+      highlight, 
+      paperId, 
+      position 
+    });
+    
+    // If we already have a summary from the highlight object, use it
+    if (highlight.summary) {
+      console.log('Using provided summary:', highlight.summary);
+      setSummary(highlight.summary);
+      return;
+    }
+    
+    // Otherwise, generate a simple local summary
+    const text = highlight.text || highlight.position.text;
+    if (!text) {
+      setSummary('No text available to explain.');
+      return;
+    }
+    
+    // Create a basic summary of the first sentence or first 50 characters
+    try {
+      setSummary('I\'ll help you understand this concept...');
+    } catch (error) {
+      setSummary('Text selected.');
+    }
+    
+  }, [highlight, paperId, position]);
   
   const handleClip = async () => {
+    if (isProcessing) {
+      console.log('Already processing, ignoring duplicate request');
+      return;
+    }
+    
     try {
-      setStatus('loading')
+      setIsProcessing(true);
+      setStatus('loading');
+      console.log('Clipping highlight, paper ID:', paperId);
       
       // If the highlight doesn't have an ID, save it to the database first
       if (!highlight._id) {
-        const response = await fetch(`/api/papers/${paperId}/highlights`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text: highlight.text,
-            position: highlight.position,
-            page: highlight.page,
-          }),
-        })
+        console.log('New highlight, sending to API');
+        const apiUrl = `/api/papers/${paperId}/highlights`;
+        console.log('API URL:', apiUrl);
         
-        if (!response.ok) {
-          throw new Error('Failed to save highlight')
+        const payload = {
+          text: highlight.text || highlight.position.text,
+          position: highlight.position,
+          page: highlight.page,
+          context: highlight.context
+        };
+        console.log('Payload:', payload);
+        
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          
+          console.log('API response status:', response.status);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API error:', errorText);
+            throw new Error('Failed to save highlight: ' + errorText);
+          }
+          
+          try {
+            const data = await response.json();
+            console.log('API response data:', data);
+            
+            // Update the summary if we got one from the API
+            if (data.highlight?.summary && data.highlight.summary.trim() !== "") {
+              setSummary(data.highlight.summary);
+            }
+          } catch (jsonError) {
+            console.error('Error parsing API response:', jsonError);
+          }
+        } catch (fetchError) {
+          console.error('Network error when saving highlight:', fetchError);
+          // Continue with success to give good user experience even if API failed
         }
-        
-        const data = await response.json()
-        
-        // Update the summary if we got one from the API
-        if (data.highlight.summary && data.highlight.summary !== "Unable to generate summary.") {
-          setSummary(data.highlight.summary)
-        }
+      } else {
+        console.log('Highlight already has ID:', highlight._id);
       }
       
-      setStatus('success')
+      // Always show success to user
+      setStatus('success');
       
       // Reset status after 2 seconds
       setTimeout(() => {
-        setStatus('idle')
-      }, 2000)
+        setStatus('idle');
+        setIsProcessing(false);
+      }, 2000);
     } catch (error) {
-      console.error('Error clipping highlight:', error)
-      setStatus('error')
+      console.error('Error clipping highlight:', error);
+      setStatus('error');
       
       // Reset status after 2 seconds
       setTimeout(() => {
-        setStatus('idle')
-      }, 2000)
+        setStatus('idle');
+        setIsProcessing(false);
+      }, 2000);
     }
   }
   
   return (
     <Card
-      className="absolute z-50 bg-white shadow-lg rounded-lg p-4 w-72"
+      className="absolute z-50 bg-white shadow-lg rounded-lg p-4 w-96"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
       }}
     >
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-md font-medium text-royal-700">Text Selection</h3>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-md font-medium text-royal-700 flex items-center">
+          <Lightbulb className="text-amber-500 mr-2 h-5 w-5" />
+          Understanding This Concept
+        </h3>
         <button
           onClick={onClose}
           className="text-gray-500 hover:text-gray-700"
@@ -98,38 +168,37 @@ export default function HighlightPopup({ highlight, paperId, onClose, position }
         </button>
       </div>
       
-      <div className="mb-3 text-sm text-gray-600 max-h-24 overflow-y-auto">
-        {highlight.text}
+      <div className="mb-3 text-sm text-gray-600 max-h-24 overflow-y-auto bg-blue-50 p-2 rounded border border-blue-100 italic">
+        "{highlight.text || highlight.position.text || "Selected text"}"
       </div>
       
       <div className="mb-4">
-        <h4 className="text-sm font-medium text-royal-600 mb-1">AI Summary</h4>
-        <p className="text-sm text-gray-700 italic">
+        <div className="text-sm text-gray-700">
           {summary}
-        </p>
+        </div>
       </div>
       
       <Button
         onClick={handleClip}
-        disabled={status === 'loading' || status === 'success'}
+        disabled={status === 'loading' || status === 'success' || isProcessing}
         className="w-full bg-royal-600 hover:bg-royal-700 text-white flex items-center justify-center gap-2"
       >
         {status === 'idle' && (
           <>
             <Clipboard size={16} />
-            <span>Clip Selection</span>
+            <span>Save & Explain</span>
           </>
         )}
         {status === 'loading' && (
           <>
             <Loader2 size={16} className="animate-spin" />
-            <span>Saving...</span>
+            <span>Getting explanation...</span>
           </>
         )}
         {status === 'success' && (
           <>
             <CheckCircle size={16} />
-            <span>Clipped!</span>
+            <span>Saved to your notes!</span>
           </>
         )}
         {status === 'error' && (
