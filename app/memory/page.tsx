@@ -8,44 +8,14 @@ import { Input } from "@/components/ui/input"
 import { BookOpen, Brain, Filter, Search, ZoomIn, ZoomOut, ArrowLeft } from "lucide-react"
 import { useMobile } from "@/hooks/use-mobile"
 
-// Mock data for memory nodes
-const mockHighlights = [
-  {
-    id: "1",
-    text: "Attention mechanisms have become an integral part of compelling sequence modeling and transduction models in various tasks.",
-    paperTitle: "Attention Is All You Need",
-    paperAuthors: "Vaswani et al.",
-    date: "2023-04-15",
-  },
-  {
-    id: "2",
-    text: "The Transformer allows for significantly more parallelization and can reach a new state of the art in translation quality.",
-    paperTitle: "Attention Is All You Need",
-    paperAuthors: "Vaswani et al.",
-    date: "2023-04-15",
-  },
-  {
-    id: "3",
-    text: "Most competitive neural sequence transduction models have an encoder-decoder structure.",
-    paperTitle: "Attention Is All You Need",
-    paperAuthors: "Vaswani et al.",
-    date: "2023-04-16",
-  },
-  {
-    id: "4",
-    text: "Large language models demonstrate emergent abilities that are not present in smaller-scale models.",
-    paperTitle: "Emergent Abilities of Large Language Models",
-    paperAuthors: "Wei et al.",
-    date: "2023-04-20",
-  },
-  {
-    id: "5",
-    text: "Chain-of-thought prompting improves the reasoning ability of large language models on complex tasks.",
-    paperTitle: "Chain-of-Thought Prompting",
-    paperAuthors: "Wei et al.",
-    date: "2023-04-22",
-  },
-]
+// Define MemoryItem type
+interface MemoryItem {
+  id: string;
+  text: string;
+  paperTitle: string;
+  paperAuthors?: string;
+  date: string;
+}
 
 // Define node graph data structure
 interface Node {
@@ -71,33 +41,30 @@ export default function MemoryPage() {
   const [links, setLinks] = useState<Link[]>([])
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
   const [zoom, setZoom] = useState(1)
+  const [highlights, setHighlights] = useState<MemoryItem[]>([])
   const isMobile = useMobile()
 
-  // Initialize the graph
+  // Fetch memory items from API
   useEffect(() => {
-    // Convert highlights to nodes
-    const graphNodes = mockHighlights.map((highlight) => ({
-      id: highlight.id,
-      text: highlight.text,
-      paperTitle: highlight.paperTitle,
-      x: Math.random() * 800,
-      y: Math.random() * 600,
-      vx: 0,
-      vy: 0,
-    }))
-
-    // Create links between nodes based on semantic similarity
-    // In a real app, this would use embeddings or other NLP techniques
-    const graphLinks: Link[] = [
-      { source: "1", target: "2", strength: 0.8 },
-      { source: "1", target: "3", strength: 0.6 },
-      { source: "2", target: "3", strength: 0.7 },
-      { source: "4", target: "5", strength: 0.9 },
-      { source: "3", target: "4", strength: 0.4 },
-    ]
-
-    setNodes(graphNodes)
-    setLinks(graphLinks)
+    fetch('/api/memory/list')
+      .then(res => res.json())
+      .then((data: MemoryItem[]) => {
+        setHighlights(data)
+        // Convert highlights to nodes for the graph
+        const graphNodes = data.map((highlight) => ({
+          id: highlight.id,
+          text: highlight.text,
+          paperTitle: highlight.paperTitle,
+          x: Math.random() * 800,
+          y: Math.random() * 600,
+          vx: 0,
+          vy: 0,
+        }))
+        setNodes(graphNodes)
+        // Optionally, you can generate links here if you want
+        // setLinks(...)
+      })
+      .catch(console.error)
   }, [])
 
   // Render the graph
@@ -277,7 +244,7 @@ export default function MemoryPage() {
     setZoom((prev) => Math.max(prev - 0.2, 0.5))
   }
 
-  const filteredHighlights = mockHighlights.filter(
+  const filteredHighlights = highlights.filter(
     (highlight) =>
       highlight.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
       highlight.paperTitle.toLowerCase().includes(searchQuery.toLowerCase()),

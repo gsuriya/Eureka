@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { XIcon, Clipboard, CheckCircle, Loader2, Lightbulb, Trash2, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { toast } from '@/components/ui/use-toast'
 
 // Define Highlight interface here instead of importing it
 interface Highlight {
@@ -164,55 +165,59 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
 
     setIsClipping(true);
     setClipStatus('loading');
-    console.log('Clipping highlight, paper ID:', paperId);
+    
+    // Debug logging to identify the issue
+    console.log('Debug - Clipping with:', {
+      paperId,
+      highlightText: highlight.text,
+      positionText: highlight.position?.text,
+      highlight: highlight
+    });
+    
+    console.log('Clipping highlight to memory, paper ID:', paperId);
 
     try {
-      let currentHighlight = { ...highlight };
-
-      // If the highlight doesn't have an ID, save it to the database first
-      if (!currentHighlight._id) {
-        console.log('New highlight, sending to API');
-        const apiUrl = `/api/papers/${paperId}/highlights`;
-        const payload = {
-          text: currentHighlight.text || currentHighlight.position.text,
-          position: currentHighlight.position,
-          page: currentHighlight.page,
-          context: currentHighlight.context
-        };
-
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to save highlight: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log('API response data:', data);
-        if (data.highlight?._id) {
-          // Update the highlight with the ID received from the server
-          currentHighlight._id = data.highlight._id;
-          // Optionally update summary if provided by API on save
-          if (data.highlight?.summary) {
-             setSummary(data.highlight.summary);
-          }
-        }
-      } else {
-        console.log('Highlight already has ID:', currentHighlight._id);
+      const textToClip = highlight.text || highlight.position.text;
+      
+      // More detailed debug
+      console.log('Clip check values:', {
+        hasPaperId: !!paperId,
+        hasTextToClip: !!textToClip,
+        paperId,
+        textToClipLength: textToClip?.length
+      });
+      
+      // Only require text, use a fallback ID if paperId is missing
+      if (!textToClip) {
+        throw new Error('Missing text for memory clip.');
       }
-
-      // Show success
+      
+      // Use paperId if available, or 'default' if not
+      const paperIdToUse = paperId || 'default';
+      
+      const response = await fetch('/api/memory/clip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paperId: paperIdToUse, text: textToClip }),
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to clip to memory: ${errorText}`);
+      }
       setClipStatus('success');
-      // Optionally, update parent state or trigger feedback
+      toast({
+        title: 'Success',
+        description: 'Highlight clipped to Memory!',
+      });
     } catch (error) {
       console.error('Error clipping highlight:', error);
       setClipStatus('error');
+      toast({
+        title: 'Error',
+        description: 'Could not save clip to Memory.',
+        variant: 'destructive',
+      });
     } finally {
-      // Reset status after 2 seconds
       setTimeout(() => {
         setClipStatus('idle');
         setIsClipping(false);
