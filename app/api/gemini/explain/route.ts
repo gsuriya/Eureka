@@ -24,9 +24,9 @@ export async function POST(req: Request) {
     let explanation = 'Failed to generate explanation.'; // Default error message
     try {
       // Get the generative model
-      const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      console.log("Calling Gemini API with model: gemini-1.0-pro...");
+      console.log("Calling Gemini API with model: gemini-1.5-flash...");
       const result = await model.generateContent(prompt);
       
       if (!result || !result.response) {
