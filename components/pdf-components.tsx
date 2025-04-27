@@ -49,6 +49,13 @@ interface PopupState {
   position: { x: number; y: number };
 }
 
+interface HighlightProps {
+  highlight: Highlight;
+  onClick: (highlight: Highlight) => void;
+  popupPosition: { x: number; y: number };
+  setPopupPosition: (position: { x: number; y: number }) => void;
+}
+
 export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, scale, showAllPages = false, paperId = '' }: PDFComponentsProps) {
   const [error, setError] = useState<string | null>(null);
   const [fileUrl, setFileUrl] = useState<string>(file);
@@ -286,20 +293,84 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
         {highlights
           .filter(highlight => highlight.page === pageNum)
           .map((highlight, index) => (
-            <div
+            <Highlight
               key={index}
-              className="absolute bg-yellow-200 opacity-50 z-10 cursor-pointer"
-              style={{
-                left: highlight.position.boundingRect.x1,
-                top: highlight.position.boundingRect.y1,
-                width: highlight.position.boundingRect.width,
-                height: highlight.position.boundingRect.height,
+              highlight={highlight}
+              onClick={(h) => {
+                // Get context for better summaries
+                let context = "";
+                try {
+                  const pageElement = pageRefs.current[h.page - 1];
+                  if (pageElement) {
+                    const textLayerElements = pageElement.querySelectorAll(".react-pdf__Page__textContent");
+                    if (textLayerElements.length > 0) {
+                      const texts = Array.from(textLayerElements)
+                        .map(el => el.textContent || "")
+                        .filter(text => text.trim().length > 0);
+                      context = texts.join(" ");
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error extracting context from page:", error);
+                }
+                
+                // Show popup with the highlight and context
+                setPopup({
+                  visible: true,
+                  highlight: {
+                    ...h,
+                    context: context || undefined
+                  },
+                  position: popup.position
+                });
               }}
-              title={highlight.position.text}
-              onContextMenu={(e) => handleHighlightContextMenu(e, highlight)}
+              popupPosition={popup.position}
+              setPopupPosition={(pos) => {
+                setPopup(prev => ({ ...prev, position: pos }));
+              }}
             />
           ))}
       </div>
+    );
+  };
+
+  const Highlight = ({ highlight, onClick, popupPosition, setPopupPosition }: HighlightProps) => {
+    const handleClick = (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // Get the dimensions of the highlight element
+      const highlightEl = event.currentTarget;
+      const rect = highlightEl.getBoundingClientRect();
+      
+      // Position the popup to the right of the highlight
+      const newPosition = {
+        x: rect.right + 10, // 10px to the right of the highlight
+        y: rect.top, // Align with the top of the highlight
+      };
+      
+      // Update popup position
+      setPopupPosition(newPosition);
+      
+      // Call the onClick handler with the highlight data
+      onClick(highlight);
+    };
+    
+    return (
+      <div
+        className="absolute cursor-pointer transition-colors duration-200"
+        style={{
+          background: 'rgba(255, 226, 143, 0.6)', // Soft yellow highlight that works in both modes
+          border: '1px solid rgba(230, 186, 73, 0.8)',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          left: highlight.position.boundingRect.x1,
+          top: highlight.position.boundingRect.y1,
+          height: highlight.position.boundingRect.height,
+          width: highlight.position.boundingRect.width,
+        }}
+        onClick={handleClick}
+        title="Click to view or edit this highlight"
+      />
     );
   };
 
@@ -357,10 +428,10 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
         
         {/* Display highlight count */}
         {highlights.length > 0 && (
-          <div className="mt-4 p-2 bg-blue-50 rounded-md border border-blue-100">
-            <p className="text-sm text-blue-800">
+          <div className="mt-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
+            <p className="text-sm text-slate-800 dark:text-slate-200">
               {highlights.length} highlight{highlights.length !== 1 ? 's' : ''} created.
-              <span className="text-xs ml-2 text-gray-600">(Right-click to view or clip)</span>
+              <span className="text-xs ml-2 text-slate-600 dark:text-slate-400">(Click to view or edit)</span>
             </p>
           </div>
         )}

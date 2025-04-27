@@ -7,7 +7,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = params.id;
+    // Await params before accessing properties
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
     
     // Connect to the database
     const db = await connectToDatabase();
@@ -29,6 +31,18 @@ export async function GET(
         { error: 'Paper not found' },
         { status: 404 }
       );
+    }
+    
+    // Debug the file path
+    console.log("Paper found:", {
+      _id: paper._id,
+      title: paper.title,
+      filePath: paper.filePath 
+    });
+    
+    // Ensure the file path starts with a forward slash
+    if (paper.filePath && !paper.filePath.startsWith('/')) {
+      paper.filePath = '/' + paper.filePath;
     }
     
     return NextResponse.json({ paper });

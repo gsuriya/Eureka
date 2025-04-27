@@ -148,32 +148,32 @@ export default function HighlightPopup({ highlight, paperId, onClose, position }
   
   return (
     <Card
-      className="absolute z-50 bg-white shadow-lg rounded-lg p-4 w-96"
+      className="absolute z-50 bg-white dark:bg-slate-800 shadow-lg rounded-lg p-4 w-96 border border-slate-200 dark:border-slate-700"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
       }}
     >
       <div className="flex justify-between items-center mb-3">
-        <h3 className="text-md font-medium text-royal-700 flex items-center">
+        <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 flex items-center">
           <Lightbulb className="text-amber-500 mr-2 h-5 w-5" />
           Understanding This Concept
         </h3>
         <button
           onClick={onClose}
-          className="text-gray-500 hover:text-gray-700"
+          className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
           aria-label="Close"
         >
           <XIcon size={18} />
         </button>
       </div>
       
-      <div className="mb-3 text-sm text-gray-600 max-h-24 overflow-y-auto bg-blue-50 p-2 rounded border border-blue-100 italic">
+      <div className="mb-3 text-sm text-slate-800 dark:text-slate-200 max-h-24 overflow-y-auto bg-slate-100 dark:bg-slate-700 p-2 rounded border border-slate-200 dark:border-slate-600 italic">
         "{highlight.text || highlight.position.text || "Selected text"}"
       </div>
       
       <div className="mb-4">
-        <div className="text-sm text-gray-700">
+        <div className="text-sm text-slate-700 dark:text-slate-300">
           {summary}
         </div>
       </div>
@@ -181,7 +181,7 @@ export default function HighlightPopup({ highlight, paperId, onClose, position }
       <Button
         onClick={handleClip}
         disabled={status === 'loading' || status === 'success' || isProcessing}
-        className="w-full bg-royal-600 hover:bg-royal-700 text-white flex items-center justify-center gap-2"
+        className="w-full bg-royal-600 hover:bg-royal-700 text-white flex items-center justify-center gap-2 dark:bg-royal-700 dark:hover:bg-royal-800"
       >
         {status === 'idle' && (
           <>
