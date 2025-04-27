@@ -168,35 +168,127 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
     }
   }, [paperId, toast])
 
-  const handleTextSelection = () => {
-    const selection = window.getSelection()
-    if (selection && selection.toString().trim().length > 0) {
-      const text = selection.toString().trim()
-      setSelectedText(text)
+  // Function to handle text selection and create highlights
+  const handleTextSelection = (currentPage: number) => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return;
 
-      // Get position for popover
-      const range = selection.getRangeAt(0)
-      const rect = range.getBoundingClientRect()
-      selectionRef.current = {
-        x: rect.left + rect.width / 2,
-        y: rect.bottom,
+    try {
+      // Get the selected text
+      const text = selection.toString().trim();
+      if (!text) return;
+
+      // Get the bounding client rect of the selection
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      
+      if (!rect.width || !rect.height) return;
+
+      // Get page element
+      const pageElement = pageRefs.current[currentPage - 1];
+      if (!pageElement) {
+        console.error("Page element reference not available");
+        return;
       }
 
-      // If API key is set, automatically get explanation
-      if (hasApiKey) {
-        // Simulate AI explanation
-        setTimeout(() => {
-          setAiExplanation(
-            `This concept refers to ${text.toLowerCase().includes("attention") ? "the attention mechanism which allows the model to focus on different parts of the input sequence when generating each part of the output" : "a key component of the architecture discussed in this paper"}.`,
-          )
-          setShowExplanation(true)
-        }, 500)
+      // Get the page's position
+      const pageRect = pageElement.getBoundingClientRect();
+      
+      // Calculate position relative to the page
+      const relativeRect = {
+        x1: rect.left - pageRect.left,
+        y1: rect.top - pageRect.top,
+        x2: rect.right - pageRect.left,
+        y2: rect.bottom - pageRect.top,
+        width: rect.width,
+        height: rect.height,
+      };
+
+      // Check for overlapping highlights
+      const hasOverlap = highlights.some(h => {
+        if (h.page !== currentPage) return false;
+        
+        // Basic overlap detection
+        const r1 = h.position.boundingRect;
+        const r2 = relativeRect;
+        
+        return !(
+          r1.x1 > r2.x2 || // r1 is to the right of r2
+          r1.x2 < r2.x1 || // r1 is to the left of r2
+          r1.y1 > r2.y2 || // r1 is below r2
+          r1.y2 < r2.y1    // r1 is above r2
+        );
+      });
+
+      if (hasOverlap) {
+        console.log("Highlight overlaps with existing highlight, skipping");
+        return;
       }
-    } else {
-      setSelectedText("")
-      setShowExplanation(false)
+
+      // Create a highlight object
+      const highlight: Highlight = {
+        page: currentPage,
+        position: {
+          boundingRect: relativeRect,
+          text,
+        },
+      };
+
+      // Get document context for better summaries
+      let context = "";
+      try {
+        const textLayerElements = pageElement.querySelectorAll(".react-pdf__Page__textContent");
+        if (textLayerElements.length > 0) {
+          const texts = Array.from(textLayerElements)
+            .map(el => el.textContent || "")
+            .filter(text => text.trim().length > 0);
+          context = texts.join(" ");
+        }
+      } catch (error) {
+        console.error("Error extracting context from page:", error);
+      }
+
+      // Calculate popup position relative to the highlight within the page
+      const popupX = relativeRect.x2 + 10; // 10px to the right of highlight
+      const popupY = relativeRect.y1; // Aligned with top of highlight
+      
+      // Check if popup would go off-screen and adjust if needed
+      const pageWidth = pageRect.width;
+      const popupWidth = 400; // Width of popup including margins
+      
+      // If popup would go beyond page edge, position left of highlight
+      const adjustedX = popupX + popupWidth > pageWidth
+        ? Math.max(10, relativeRect.x1 - popupWidth - 10)
+        : popupX;
+
+      // Add the highlight and immediately show popup
+      setHighlights(prev => {
+        const newHighlights = [...prev, highlight];
+        
+        // After adding the highlight, show popup immediately
+        setPopup({
+          visible: true,
+          highlight: {
+            ...highlight,
+            context: context || undefined
+          },
+          position: {
+            x: adjustedX,
+            y: popupY
+          }
+        });
+        
+        return newHighlights;
+      });
+      
+      console.log("Created highlight:", highlight);
+      
+      // Clear the selection
+      selection.removeAllRanges();
+    } catch (error) {
+      console.error("Error creating highlight:", error);
     }
-  }
+  };
 
   const saveHighlight = () => {
     if (selectedText && !savedHighlights.includes(selectedText)) {
@@ -457,7 +549,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
 
               {/* Paper Content - only show for mock data or extracted content */}
               {paper.sections && paper.sections.length > 0 && (
-                <div className="space-y-8" onMouseUp={handleTextSelection}>
+                <div className="space-y-8" onMouseUp={() => handleTextSelection(currentPage)}>
                   {paper.sections.map((section: any, index: number) => (
                     <div key={index} className="space-y-4">
                       <h2 className="text-xl font-semibold text-gray-800">{section.title}</h2>

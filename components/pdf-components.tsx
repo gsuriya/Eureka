@@ -52,8 +52,6 @@ interface PopupState {
 interface HighlightProps {
   highlight: Highlight;
   onClick: (highlight: Highlight) => void;
-  popupPosition: { x: number; y: number };
-  setPopupPosition: (position: { x: number; y: number }) => void;
 }
 
 export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, scale, showAllPages = false, paperId = '' }: PDFComponentsProps) {
@@ -66,13 +64,60 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     highlight: null,
     position: { x: 0, y: 0 }
   });
+  const [visiblePages, setVisiblePages] = useState<number[]>([]);
+  
   const textLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<HTMLDivElement[]>([]);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
   // Initialize page refs when numPages changes
   useEffect(() => {
     pageRefs.current = Array(numPages).fill(null);
+    
+    // Cleanup previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+    
+    // Setup new intersection observer to track visible pages
+    observerRef.current = new IntersectionObserver((entries) => {
+      const newVisiblePages: number[] = [];
+      
+      entries.forEach(entry => {
+        const pageNum = parseInt(entry.target.getAttribute('data-page') || '0', 10);
+        if (pageNum > 0) {
+          if (entry.isIntersecting) {
+            newVisiblePages.push(pageNum);
+          }
+        }
+      });
+      
+      if (newVisiblePages.length > 0) {
+        setVisiblePages(newVisiblePages);
+      }
+    }, {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.3 // Page is considered visible when 30% is in viewport
+    });
+    
+    // Observe all page elements
+    setTimeout(() => {
+      if (pageRefs.current) {
+        pageRefs.current.forEach(pageEl => {
+          if (pageEl && observerRef.current) {
+            observerRef.current.observe(pageEl);
+          }
+        });
+      }
+    }, 100);
+    
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
   }, [numPages]);
 
   // Ensure file path is correct
@@ -161,6 +206,29 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
         height: rect.height,
       };
 
+      // Check for overlapping highlights
+      const hasOverlap = highlights.some(h => {
+        if (h.page !== currentPage) return false;
+        
+        // Basic overlap detection using coordinates
+        const r1 = h.position.boundingRect;
+        const r2 = relativeRect;
+        
+        // Check if one rectangle is completely to the left of the other
+        if (r1.x1 + r1.width < r2.x1 || r2.x1 + r2.width < r1.x1) return false;
+        
+        // Check if one rectangle is completely above the other
+        if (r1.y1 + r1.height < r2.y1 || r2.y1 + r2.height < r1.y1) return false;
+        
+        // If we get here, the rectangles overlap
+        return true;
+      });
+
+      if (hasOverlap) {
+        console.log("Highlight overlaps with existing highlight, skipping");
+        return;
+      }
+
       // Create a highlight object
       const highlight: Highlight = {
         page: currentPage,
@@ -170,8 +238,53 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
         },
       };
 
-      // Add the highlight
-      setHighlights(prev => [...prev, highlight]);
+      // Get document context for better summaries
+      let context = "";
+      try {
+        const textLayerElements = pageElement.querySelectorAll(".react-pdf__Page__textContent");
+        if (textLayerElements.length > 0) {
+          const texts = Array.from(textLayerElements)
+            .map(el => el.textContent || "")
+            .filter(text => text.trim().length > 0);
+          context = texts.join(" ");
+        }
+      } catch (error) {
+        console.error("Error extracting context from page:", error);
+      }
+
+      // Calculate popup position relative to the page
+      // Position to the right of the highlight
+      const popupX = relativeRect.x2 + 10; // 10px to the right
+      let popupY = relativeRect.y1;  // Top aligned
+      
+      // Calculate page width to avoid going off the edge
+      const pageWidth = pageElement.clientWidth;
+      const popupWidth = 400; // Width of popup including margins
+      
+      // Adjust position if would go off page
+      const adjustedX = popupX + popupWidth > pageWidth
+        ? Math.max(10, relativeRect.x1 - popupWidth - 10) // Left of highlight
+        : popupX;
+
+      // Add the highlight and immediately show popup
+      setHighlights(prev => {
+        const newHighlights = [...prev, highlight];
+        
+        // After adding the highlight, show popup immediately
+        setPopup({
+          visible: true,
+          highlight: {
+            ...highlight,
+            context: context || undefined
+          },
+          position: {
+            x: adjustedX,
+            y: popupY
+          }
+        });
+        
+        return newHighlights;
+      });
       
       console.log("Created highlight:", highlight);
       
@@ -180,69 +293,6 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     } catch (error) {
       console.error("Error creating highlight:", error);
     }
-  };
-
-  // Handle right click on a highlight
-  const handleHighlightContextMenu = (e: React.MouseEvent, highlight: Highlight) => {
-    e.preventDefault();
-    
-    console.log("Right-click on highlight:", {
-      highlight,
-      paperId,
-      clientX: e.clientX,
-      clientY: e.clientY
-    });
-    
-    // Get the document context to pass to the API for better summaries
-    let context = "";
-    try {
-      // Find all text elements in the current page
-      const pageElement = pageRefs.current[highlight.page - 1];
-      if (pageElement) {
-        const textLayerElements = pageElement.querySelectorAll(".react-pdf__Page__textContent");
-        if (textLayerElements.length > 0) {
-          // Extract text from all text elements
-          const texts = Array.from(textLayerElements)
-            .map(el => el.textContent || "")
-            .filter(text => text.trim().length > 0);
-          context = texts.join(" ");
-          console.log(`Extracted context from page ${highlight.page}: ${context.substring(0, 100)}...`);
-        }
-      }
-    } catch (error) {
-      console.error("Error extracting context from page:", error);
-    }
-    
-    // Calculate position for the popup based on the highlight position
-    // Get the actual highlight DOM element
-    const highlightElement = e.currentTarget as HTMLElement;
-    const highlightRect = highlightElement.getBoundingClientRect();
-    
-    // Position right next to the highlight, aligned with its right edge
-    const popupX = highlightRect.right + 10; // 10px to the right of the highlight
-    const popupY = highlightRect.top; // Aligned with the top of the highlight
-    
-    // But check if this would go off-screen
-    const windowWidth = window.innerWidth;
-    const popupWidth = 400; // Width of the popup including margins
-    
-    // If popup would go off the right edge, place it to the left of the highlight instead
-    const adjustedX = popupX + popupWidth > windowWidth 
-      ? Math.max(10, highlightRect.left - popupWidth - 10) // 10px to the left, but ensure it's not off-screen left
-      : popupX;
-    
-    // Show popup at the calculated position
-    setPopup({
-      visible: true,
-      highlight: {
-        ...highlight,
-        context: context || undefined
-      },
-      position: { 
-        x: adjustedX, 
-        y: popupY 
-      }
-    });
   };
 
   // Close the popup
@@ -262,7 +312,64 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     const pageNum = parseInt(element.dataset.page || '0', 10);
     if (pageNum > 0) {
       pageRefs.current[pageNum - 1] = element;
+      
+      // Observe this page element for visibility
+      if (observerRef.current) {
+        observerRef.current.observe(element);
+      }
     }
+  };
+
+  // Handle click on highlight
+  const handleHighlightClick = (highlight: Highlight) => {
+    // Get context for better summaries
+    let context = "";
+    try {
+      const pageElement = pageRefs.current[highlight.page - 1];
+      if (pageElement) {
+        const textLayerElements = pageElement.querySelectorAll(".react-pdf__Page__textContent");
+        if (textLayerElements.length > 0) {
+          const texts = Array.from(textLayerElements)
+            .map(el => el.textContent || "")
+            .filter(text => text.trim().length > 0);
+          context = texts.join(" ");
+        }
+      }
+    } catch (error) {
+      console.error("Error extracting context from page:", error);
+    }
+    
+    // Calculate position to show popup
+    const pageElement = pageRefs.current[highlight.page - 1];
+    if (!pageElement) return;
+    
+    const highlightRect = highlight.position.boundingRect;
+    
+    // Position popup to the right of the highlight
+    const popupX = highlightRect.x2 + 10; // 10px to the right
+    const popupY = highlightRect.y1; // Align with top
+    
+    // Check if popup would go off page edge
+    const pageWidth = pageElement.clientWidth;
+    const popupWidth = 400; // Width of popup including margins
+    
+    // Adjust position if needed
+    const adjustedX = popupX + popupWidth > pageWidth
+      ? Math.max(10, highlightRect.x1 - popupWidth - 10) // Position left instead
+      : popupX;
+    
+    // Show popup
+    setPopup({
+      visible: true,
+      highlight: {
+        ...highlight,
+        context: context || undefined
+      },
+      position: {
+        x: adjustedX,
+        y: popupY
+      }
+    });
   };
 
   // Render a single page with highlights
@@ -293,84 +400,44 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
         {highlights
           .filter(highlight => highlight.page === pageNum)
           .map((highlight, index) => (
-            <Highlight
+            <div
               key={index}
-              highlight={highlight}
-              onClick={(h) => {
-                // Get context for better summaries
-                let context = "";
-                try {
-                  const pageElement = pageRefs.current[h.page - 1];
-                  if (pageElement) {
-                    const textLayerElements = pageElement.querySelectorAll(".react-pdf__Page__textContent");
-                    if (textLayerElements.length > 0) {
-                      const texts = Array.from(textLayerElements)
-                        .map(el => el.textContent || "")
-                        .filter(text => text.trim().length > 0);
-                      context = texts.join(" ");
-                    }
-                  }
-                } catch (error) {
-                  console.error("Error extracting context from page:", error);
-                }
-                
-                // Show popup with the highlight and context
-                setPopup({
-                  visible: true,
-                  highlight: {
-                    ...h,
-                    context: context || undefined
-                  },
-                  position: popup.position
-                });
+              className="absolute cursor-pointer transition-colors duration-200"
+              style={{
+                background: 'rgba(255, 226, 143, 0.6)', // Soft yellow highlight that works in both modes
+                border: '1px solid rgba(230, 186, 73, 0.8)',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+                left: highlight.position.boundingRect.x1,
+                top: highlight.position.boundingRect.y1,
+                height: highlight.position.boundingRect.height,
+                width: highlight.position.boundingRect.width,
               }}
-              popupPosition={popup.position}
-              setPopupPosition={(pos) => {
-                setPopup(prev => ({ ...prev, position: pos }));
-              }}
+              onClick={() => handleHighlightClick(highlight)}
+              title="Click to view or edit this highlight"
             />
           ))}
+          
+        {/* Popup for this page */}
+        {popup.visible && 
+         popup.highlight && 
+         popup.highlight.page === pageNum && (
+          <div 
+            className="absolute" 
+            style={{
+              left: popup.position.x,
+              top: popup.position.y,
+              zIndex: 50
+            }}
+          >
+            <HighlightPopup
+              highlight={popup.highlight}
+              paperId={paperId}
+              onClose={closePopup}
+              position={{ x: 0, y: 0 }} // Position is handled by parent div
+            />
+          </div>
+        )}
       </div>
-    );
-  };
-
-  const Highlight = ({ highlight, onClick, popupPosition, setPopupPosition }: HighlightProps) => {
-    const handleClick = (event: React.MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      // Get the dimensions of the highlight element
-      const highlightEl = event.currentTarget;
-      const rect = highlightEl.getBoundingClientRect();
-      
-      // Position the popup to the right of the highlight
-      const newPosition = {
-        x: rect.right + 10, // 10px to the right of the highlight
-        y: rect.top, // Align with the top of the highlight
-      };
-      
-      // Update popup position
-      setPopupPosition(newPosition);
-      
-      // Call the onClick handler with the highlight data
-      onClick(highlight);
-    };
-    
-    return (
-      <div
-        className="absolute cursor-pointer transition-colors duration-200"
-        style={{
-          background: 'rgba(255, 226, 143, 0.6)', // Soft yellow highlight that works in both modes
-          border: '1px solid rgba(230, 186, 73, 0.8)',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          left: highlight.position.boundingRect.x1,
-          top: highlight.position.boundingRect.y1,
-          height: highlight.position.boundingRect.height,
-          width: highlight.position.boundingRect.width,
-        }}
-        onClick={handleClick}
-        title="Click to view or edit this highlight"
-      />
     );
   };
 
@@ -413,17 +480,13 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
           </div>
         </Document>
         
-        {/* AI Summary Popup */}
-        {popup.visible && popup.highlight && (
-          <HighlightPopup
-            highlight={{
-              ...popup.highlight,
-              text: popup.highlight.position.text
-            }}
-            paperId={paperId}
-            onClose={closePopup}
-            position={popup.position}
-          />
+        {/* Display current page indicator when scrolling */}
+        {showAllPages && visiblePages.length > 0 && (
+          <div className="fixed bottom-4 right-4 bg-slate-800 text-white px-3 py-2 rounded-full shadow-lg opacity-80">
+            <p className="text-sm font-medium">
+              Page {Math.min(...visiblePages)} of {numPages}
+            </p>
+          </div>
         )}
         
         {/* Display highlight count */}
@@ -431,11 +494,10 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
           <div className="mt-4 p-2 bg-slate-100 dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
             <p className="text-sm text-slate-800 dark:text-slate-200">
               {highlights.length} highlight{highlights.length !== 1 ? 's' : ''} created.
-              <span className="text-xs ml-2 text-slate-600 dark:text-slate-400">(Click to view or edit)</span>
             </p>
           </div>
         )}
       </div>
     </>
-  )
+  );
 }
