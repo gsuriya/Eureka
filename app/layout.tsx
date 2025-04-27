@@ -24,8 +24,8 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "PaperMind - Research Paper Assistant",
-  description: "Transform your research experience with AI-powered insights and an intelligent memory system",
+  title: "Eureka - Research Paper Assistant",
+  description: "Read, annotate, and understand research papers with AI assistance.",
     generator: 'v0.dev'
 }
 

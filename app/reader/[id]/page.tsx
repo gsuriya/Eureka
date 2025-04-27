@@ -398,7 +398,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
               <span className="font-bold text-royal-500 hidden md:inline">
-                PaperMind
+                Eureka
               </span>
             </Link>
           </div>

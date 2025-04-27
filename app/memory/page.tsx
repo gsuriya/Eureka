@@ -293,7 +293,7 @@ export default function MemoryPage() {
               <div className="bg-royal-500 p-1.5 rounded-lg">
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
-              <span className="font-sans font-bold text-royal-500">PaperMind</span>
+              <span className="font-sans font-bold text-royal-500">Eureka</span>
             </NextLink>
           </div>
           <div className="flex items-center gap-4">

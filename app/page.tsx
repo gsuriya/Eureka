@@ -12,7 +12,7 @@ export default function LandingPage() {
             <div className="bg-royal-500 p-1.5 rounded-lg flex items-center">
               <BookOpen className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-sans font-bold text-royal-500">PaperMind</span>
+            <span className="text-xl font-sans font-bold text-royal-500">Eureka</span>
           </div>
           <nav className="hidden md:flex gap-6">
             <Link href="/" className="font-sans font-bold text-royal-700 underline underline-offset-4">Home</Link>
@@ -39,10 +39,10 @@ export default function LandingPage() {
               </div>
               <div className="space-y-2">
                 <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
-                  Transform Your <span className="italic">Research</span> Experience
+                  Cursor for <span className="italic">Research</span> Papers
                 </h1>
                 <p className="max-w-[600px] text-white/80 md:text-xl">
-                  PaperMind helps you read, understand, and connect research papers with AI-powered insights and an
+                  Eureka helps you read, understand, and connect research papers with AI-powered insights and an
                   intelligent memory system designed for academic professionals.
                 </p>
               </div>
@@ -197,7 +197,7 @@ export default function LandingPage() {
                 Trusted by Academic Professionals
               </h2>
               <p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                See what researchers are saying about PaperMind
+                See what researchers are saying about Eureka
               </p>
             </div>
           </div>
@@ -215,7 +215,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className="text-gray-600 italic">
-                "PaperMind has transformed how I approach literature reviews. The knowledge graph feature helps me
+                "Eureka has transformed how I approach literature reviews. The knowledge graph feature helps me
                 discover connections I would have otherwise missed."
               </p>
             </div>
@@ -249,7 +249,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className="text-gray-600 italic">
-                "PaperMind's memory system has become an essential part of my research workflow. It's like having a
+                "Eureka's memory system has become an essential part of my research workflow. It's like having a
                 second brain for academic literature."
               </p>
             </div>
@@ -267,7 +267,7 @@ export default function LandingPage() {
                 Ready to Transform Your Research?
               </h2>
               <p className="max-w-[600px] mx-auto text-white/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Join thousands of researchers who are using PaperMind to enhance their understanding and connections.
+                Join thousands of researchers who are using Eureka to enhance their understanding and connections.
               </p>
             </div>
             <div className="flex flex-col gap-3 min-[400px]:flex-row">
@@ -301,7 +301,7 @@ export default function LandingPage() {
                 <div className="bg-royal-500 p-1.5 rounded-lg">
                   <BookOpen className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-bold text-royal-500">PaperMind</span>
+                <span className="font-bold text-royal-500">Eureka</span>
               </div>
               <p className="text-sm text-gray-600 mb-4">
                 Transform your research experience with AI-powered insights and an intelligent memory system.
@@ -412,7 +412,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-600">© 2024 PaperMind. All rights reserved.</p>
+            <p className="text-sm text-gray-600">© 2024 Eureka. All rights reserved.</p>
             <div className="flex gap-4 mt-4 md:mt-0">
               <Link href="#" className="text-sm text-gray-600 hover:text-royal-500 transition-colors">
                 Terms

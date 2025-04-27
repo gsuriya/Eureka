@@ -114,7 +114,7 @@ export default function UploadPage() {
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold text-royal-500">
-                PaperMind
+                Eureka
               </span>
             </Link>
           </div>
