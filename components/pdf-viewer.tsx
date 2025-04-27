@@ -23,7 +23,7 @@ interface PDFViewerProps {
 
 export function PDFViewer({ url, fileName, paperId }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null)
-  const [scale, setScale] = useState(1.2)
+  const [scale, setScale] = useState(2.0)
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages)

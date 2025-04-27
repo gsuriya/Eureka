@@ -1,71 +1,104 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, X, FileText, BookOpen, Upload, Plus } from "lucide-react"
-
-// Mock data for imported papers
-const mockPapers = [
-  {
-    id: "1",
-    title: "Attention Is All You Need",
-    authors: "Vaswani et al.",
-    year: "2017",
-    venue: "NeurIPS",
-    isActive: true,
-  },
-  {
-    id: "2",
-    title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
-    authors: "Devlin et al.",
-    year: "2019",
-    venue: "NAACL",
-    isActive: false,
-  },
-  {
-    id: "3",
-    title: "GPT-3: Language Models are Few-Shot Learners",
-    authors: "Brown et al.",
-    year: "2020",
-    venue: "NeurIPS",
-    isActive: false,
-  },
-  {
-    id: "4",
-    title: "Deep Residual Learning for Image Recognition",
-    authors: "He et al.",
-    year: "2016",
-    venue: "CVPR",
-    isActive: false,
-  },
-  {
-    id: "5",
-    title: "Transformer-XL: Attentive Language Models Beyond a Fixed-Length Context",
-    authors: "Dai et al.",
-    year: "2019",
-    venue: "ACL",
-    isActive: false,
-  },
-]
+import { Search, X, FileText, BookOpen, Upload, Plus, Trash2 } from "lucide-react"
 
 interface PapersSidebarProps {
   isOpen: boolean
   onClose: () => void
   activePaperId: string
-  onPaperSelect: (id: string) => void
 }
 
-export function PapersSidebar({ isOpen, onClose, activePaperId, onPaperSelect }: PapersSidebarProps) {
-  const [searchQuery, setSearchQuery] = useState("")
+// Define type for fetched paper data
+interface PaperData {
+  _id: string;
+  title: string;
+  createdAt?: string; // Optional for sorting
+}
 
-  const filteredPapers = mockPapers.filter(
+export function PapersSidebar({ isOpen, onClose, activePaperId }: PapersSidebarProps) {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [papers, setPapers] = useState<PaperData[]>([]) // State to hold fetched papers
+  const [loading, setLoading] = useState(true) // Loading state
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const router = useRouter() // Initialize router
+
+  // Fetch papers on component mount
+  useEffect(() => {
+    const fetchPapers = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/upload'); // Fetch from the GET endpoint
+        if (!response.ok) {
+          throw new Error('Failed to fetch papers');
+        }
+        const data = await response.json();
+        setPapers(data.papers || []);
+      } catch (error) {
+        console.error('Error fetching papers for sidebar:', error);
+        setPapers([]); // Reset papers on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPapers();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  const filteredPapers = papers.filter(
     (paper) =>
-      paper.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      paper.authors.toLowerCase().includes(searchQuery.toLowerCase()),
+      paper.title.toLowerCase().includes(searchQuery.toLowerCase())
+      // Add search by author/year if needed later
   )
+
+  // Delete paper handler
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this paper?')) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/papers/${id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        throw new Error('Failed to delete paper');
+      }
+      
+      // If the deleted paper is currently open, navigate to another paper
+      if (id === activePaperId) {
+        // Find the index of the deleted paper
+        const index = filteredPapers.findIndex(p => p._id === id);
+        
+        // Remove the deleted paper from state
+        const updatedPapers = papers.filter(p => p._id !== id);
+        setPapers(updatedPapers);
+        
+        // Find the next paper to show (or the previous one if we deleted the last paper)
+        if (updatedPapers.length > 0) {
+          // If there's a next paper, show it
+          if (index < updatedPapers.length) {
+            router.push(`/reader/${updatedPapers[index]._id}`);
+          } 
+          // Otherwise show the last paper
+          else if (index > 0) {
+            router.push(`/reader/${updatedPapers[updatedPapers.length - 1]._id}`);
+          }
+        } else {
+          // If no papers left, go to an empty reader state
+          router.push('/reader/empty');
+        }
+      } else {
+        // If the deleted paper is not the active one, just update state
+        setPapers((prev) => prev.filter((p) => p._id !== id));
+      }
+    } catch (error) {
+      alert('Error deleting paper.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   return (
     <div
@@ -104,41 +137,67 @@ export function PapersSidebar({ isOpen, onClose, activePaperId, onPaperSelect }:
         {/* Papers List */}
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-2">
-            {filteredPapers.map((paper) => (
-              <div
-                key={paper.id}
-                className={`p-3 rounded-lg cursor-pointer transition-all font-sans ${
-                  paper.id === activePaperId
-                    ? "bg-royal-50 border border-royal-200"
-                    : "hover:bg-gray-50 border border-transparent"
-                }`}
-                onClick={() => onPaperSelect(paper.id)}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={`p-2 rounded-md ${
-                      paper.id === activePaperId
-                        ? "bg-royal-100 text-royal-600"
-                        : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    <FileText className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3
-                      className={`text-sm font-medium truncate ${
-                        paper.id === activePaperId ? "text-royal-600" : "text-gray-800"
+            {loading ? (
+              <div className="text-center py-4 text-gray-500">Loading papers...</div>
+            ) : filteredPapers.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">No papers found.</div>
+            ) : (
+              filteredPapers.map((paper) => (
+                <div key={paper._id} className="group relative">
+                  <Link href={`/reader/${paper._id}`} passHref legacyBehavior>
+                    <a
+                      className={`block p-3 rounded-lg cursor-pointer transition-all font-sans ${
+                        paper._id === activePaperId
+                          ? "bg-royal-50 border border-royal-200"
+                          : "hover:bg-gray-50 border border-transparent"
                       }`}
+                      onClick={(e) => {
+                        if (paper._id === activePaperId) {
+                          // e.preventDefault();
+                        }
+                        if (window.innerWidth < 768) {
+                          onClose();
+                        }
+                      }}
                     >
-                      {paper.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-1 truncate">
-                      {paper.authors} • {paper.year} • {paper.venue}
-                    </p>
-                  </div>
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={`p-2 rounded-md ${
+                            paper._id === activePaperId
+                              ? "bg-royal-100 text-royal-600"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
+                        >
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3
+                            className={`text-sm font-medium truncate ${
+                              paper._id === activePaperId ? "text-royal-600" : "text-gray-800"
+                            }`}
+                          >
+                            {paper.title}
+                          </h3>
+                        </div>
+                        {/* Delete button always visible */}
+                        <button
+                          className="flex-shrink-0 p-1 rounded hover:bg-red-100 transition-colors"
+                          title="Delete paper"
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(paper._id); }}
+                          disabled={deletingId === paper._id}
+                        >
+                          {deletingId === paper._id ? (
+                            <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          )}
+                        </button>
+                      </div>
+                    </a>
+                  </Link>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </ScrollArea>
 

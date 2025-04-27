@@ -53,4 +53,31 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
+    const db = await connectToDatabase();
+    const papersCollection = db.collection(dbModels.papers);
+    let result;
+    try {
+      const objectId = new ObjectId(id);
+      result = await papersCollection.deleteOne({ _id: objectId });
+    } catch (error) {
+      // If not a valid ObjectId, try deleting by other means
+      result = await papersCollection.deleteOne({ id: id });
+    }
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: 'Paper not found or already deleted' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting paper:', error);
+    return NextResponse.json({ error: 'Failed to delete paper' }, { status: 500 });
+  }
 } 

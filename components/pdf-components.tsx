@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, RefCallback } from "react"
 import { Document, Page, pdfjs } from "react-pdf"
 import dynamic from "next/dynamic"
+import { useToast } from "@/hooks/use-toast"
 
 // Dynamically import the HighlightPopup component
 const HighlightPopup = dynamic(() => import('./highlight-popup'), {
@@ -65,6 +66,7 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     position: { x: 0, y: 0 }
   });
   const [visiblePages, setVisiblePages] = useState<number[]>([]);
+  const { toast } = useToast();
   
   const textLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -171,7 +173,7 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
   };
 
   // Function to handle text selection and create highlights
-  const handleTextSelection = (currentPage: number) => {
+  const handleTextSelection = async (currentPage: number) => {
     const selection = window.getSelection();
     if (!selection || selection.isCollapsed) return;
 
@@ -255,7 +257,8 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
       // Calculate popup position relative to the page
       // Position to the right of the highlight
       const popupX = relativeRect.x2 + 10; // 10px to the right
-      let popupY = relativeRect.y1;  // Top aligned
+      // Center popup vertically relative to the highlight
+      let popupY = relativeRect.y1 + relativeRect.height / 2; 
       
       // Calculate page width to avoid going off the edge
       const pageWidth = pageElement.clientWidth;
@@ -270,6 +273,13 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
       setHighlights(prev => {
         const newHighlights = [...prev, highlight];
         
+        // Log the highlight creation
+        console.log("Created new highlight:", { 
+          highlight,
+          hasId: !!highlight._id,
+          totalHighlights: newHighlights.length
+        });
+        
         // After adding the highlight, show popup immediately
         setPopup({
           visible: true,
@@ -279,17 +289,98 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
           },
           position: {
             x: adjustedX,
-            y: popupY
+            y: popupY // Use the centered Y position
           }
         });
         
         return newHighlights;
       });
       
-      console.log("Created highlight:", highlight);
+      // Log popup state after setting
+      console.log("Popup state after creating highlight:", {
+        visible: true,
+        highlightHasId: !!(popup.highlight && popup.highlight._id),
+        popupHighlight: popup.highlight
+      });
       
       // Clear the selection
       selection.removeAllRanges();
+
+      // If we have a paper ID, save the highlight to backend
+      if (paperId) {
+        try {
+          console.log("Saving highlight to backend");
+          const apiUrl = `/api/papers/${paperId}/highlights`;
+          
+          const payload = {
+            text: highlight.text || highlight.position.text,
+            position: highlight.position,
+            page: highlight.page,
+            context: context
+          };
+          
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+          });
+          
+          if (!response.ok) {
+            throw new Error('Failed to save highlight to server');
+          }
+          
+          const data = await response.json();
+          console.log("Highlight saved to server:", data);
+          
+          if (data.highlight && data.highlight._id) {
+            const serverHighlightId = data.highlight._id;
+            
+            // Update highlights state with the server ID
+            setHighlights(prev => {
+              return prev.map(h => {
+                // Find the temporary highlight we just created by matching position/page
+                if (h.page === highlight.page && 
+                    h.position.boundingRect.x1 === highlight.position.boundingRect.x1 &&
+                    h.position.boundingRect.y1 === highlight.position.boundingRect.y1) {
+                  console.log("Updated highlight with server ID:", serverHighlightId);
+                  // Return the updated highlight with ID and summary from server
+                  return { 
+                    ...h, 
+                    _id: serverHighlightId,
+                    summary: data.highlight.summary || h.summary
+                  };
+                }
+                return h;
+              });
+            });
+            
+            // Also update the popup state with the server ID
+            setPopup(prev => {
+              if (prev.visible && prev.highlight) {
+                console.log("Updated popup highlight with server ID:", serverHighlightId);
+                return {
+                  ...prev,
+                  highlight: {
+                    ...prev.highlight,
+                    _id: serverHighlightId,
+                    summary: data.highlight.summary || prev.highlight.summary
+                  }
+                };
+              }
+              return prev;
+            });
+          }
+        } catch (error) {
+          console.error("Error saving highlight:", error);
+          toast({
+            title: 'Error',
+            description: 'Failed to save highlight to server.',
+            variant: 'destructive',
+          });
+        }
+      }
     } catch (error) {
       console.error("Error creating highlight:", error);
     }
@@ -320,8 +411,44 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     }
   };
 
+  // Delete highlight from backend
+  const deleteHighlight = async (highlightId: string) => {
+    console.log("deleteHighlight called with ID:", highlightId);
+    if (!paperId) return;
+    try {
+      const response = await fetch(`/api/papers/${paperId}/highlights/${highlightId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete highlight from server');
+      }
+      console.log(`Highlight ${highlightId} deleted from server.`);
+    } catch (error) {
+      console.error('Error deleting highlight:', error);
+      toast({
+        title: 'Error',
+        description: 'Could not delete highlight from server.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   // Handle click on highlight
   const handleHighlightClick = (highlight: Highlight) => {
+    // Debug logging for handleHighlightClick
+    console.log("Highlight clicked:", {
+      highlightId: highlight._id,
+      hasId: !!highlight._id,
+      highlight
+    });
+    
+    // Check if the popup for this specific highlight is already visible
+    if (popup.visible && popup.highlight?._id === highlight._id) {
+      // Just close the popup if the same highlight is clicked again
+      closePopup();
+      return; // Stop processing here
+    }
+
     // Get context for better summaries
     let context = "";
     try {
@@ -347,7 +474,8 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     
     // Position popup to the right of the highlight
     const popupX = highlightRect.x2 + 10; // 10px to the right
-    const popupY = highlightRect.y1; // Align with top
+    // Center popup vertically relative to the highlight
+    const popupY = highlightRect.y1 + highlightRect.height / 2; 
     
     // Check if popup would go off page edge
     const pageWidth = pageElement.clientWidth;
@@ -367,10 +495,103 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
       },
       position: {
         x: adjustedX,
-        y: popupY
+        y: popupY // Use centered Y position
       }
     });
   };
+  
+  // New function to delete a highlight
+  const handleDeleteHighlight = (highlight: Highlight) => {
+    console.log("handleDeleteHighlight called:", {
+      highlight,
+      highlightId: highlight._id,
+      hasId: !!highlight._id
+    });
+    
+    // Remove highlight locally regardless of whether it has an ID
+    if (highlight._id) {
+      // For highlights with an ID, filter by ID
+      setHighlights(prev => prev.filter(h => h._id !== highlight._id));
+      
+      // Delete from backend
+      deleteHighlight(highlight._id);
+    } else {
+      // For temporary highlights without an ID, filter by position
+      setHighlights(prev => prev.filter(h => 
+        h.page !== highlight.page || 
+        h.position.boundingRect.x1 !== highlight.position.boundingRect.x1 ||
+        h.position.boundingRect.y1 !== highlight.position.boundingRect.y1
+      ));
+    }
+    
+    // Close the popup
+    closePopup();
+    
+    toast({
+      title: 'Highlight removed',
+      description: 'The highlight and explanation have been removed.',
+    });
+  };
+
+  // Test function for the API delete endpoint (for debugging)
+  const testDeleteEndpoint = async () => {
+    if (!paperId || highlights.length === 0) return;
+    
+    // Take the first highlight that has an ID
+    const testHighlight = highlights.find(h => h._id);
+    if (!testHighlight || !testHighlight._id) {
+      console.error("No highlight with ID found for testing");
+      return;
+    }
+    
+    console.log("Testing delete endpoint with:", {
+      paperId,
+      highlightId: testHighlight._id
+    });
+    
+    try {
+      const response = await fetch(`/api/papers/${paperId}/highlights/${testHighlight._id}`, {
+        method: 'DELETE',
+      });
+      
+      console.log("Delete test response:", {
+        status: response.status,
+        ok: response.ok,
+        statusText: response.statusText
+      });
+      
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Error response:", text);
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log("Delete test successful:", data);
+      
+      // Remove from state
+      setHighlights(prev => prev.filter(h => h._id !== testHighlight._id));
+      
+    } catch (error) {
+      console.error("Delete test failed:", error);
+    }
+  };
+  
+  // Run test once when highlights are loaded (for debugging only)
+  useEffect(() => {
+    if (highlights.length > 0 && highlights.some(h => h._id)) {
+      // Uncomment to test the delete endpoint
+      // setTimeout(testDeleteEndpoint, 5000);
+      
+      // Log all highlights with their IDs
+      console.log("Loaded highlights:", highlights.map(h => ({
+        id: h._id,
+        hasId: !!h._id,
+        page: h.page,
+        text: h.text?.substring(0, 30) || h.position.text.substring(0, 30)
+      })));
+    }
+  }, [highlights.length]);
 
   // Render a single page with highlights
   const renderPage = (pageNum: number) => {
@@ -426,14 +647,21 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
             style={{
               left: popup.position.x,
               top: popup.position.y,
-              zIndex: 50
+              transform: 'translateY(-50%)', // Center vertically
+              zIndex: 50,
+              marginLeft: '50px', // Add more space between highlight and popup
+              pointerEvents: 'auto' // Ensure popup is clickable
             }}
           >
             <HighlightPopup
-              highlight={popup.highlight}
+              highlight={{
+                ...popup.highlight,
+                text: popup.highlight.text || popup.highlight.position.text || "", // Provide fallback for text
+              }}
               paperId={paperId}
               onClose={closePopup}
               position={{ x: 0, y: 0 }} // Position is handled by parent div
+              onDelete={handleDeleteHighlight}
             />
           </div>
         )}

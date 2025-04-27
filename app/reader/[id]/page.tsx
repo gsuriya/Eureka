@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast"
 import { PapersSidebar } from "@/components/papers-sidebar"
 import { PaperTabs } from "@/components/paper-tabs"
 import { PDFViewer } from "@/components/pdf-viewer"
+import { useRouter } from "next/navigation"
 
 // Mock paper data
 const paperData = {
@@ -123,6 +124,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
 
   const selectionRef = useRef<{ x: number; y: number } | null>(null)
   const { toast } = useToast()
+  const router = useRouter()
 
   // Fetch paper data from API
   useEffect(() => {
@@ -343,7 +345,9 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
   // Effect to handle sidebar on resize
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 768) {
+      if (window.innerWidth < 768) {
+        setShowSidebar(false)
+      } else {
         setShowSidebar(true)
       }
     }
@@ -399,39 +403,6 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
             </Link>
           </div>
           <div className="flex items-center gap-2">
-            {/* Download Button */}
-            {paper.filePath && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a 
-                      href={paper.filePath} 
-                      download={paper.originalName || 'paper.pdf'}
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                    >
-                      <Button variant="outline" size="icon" className="border-gray-200 shadow-sm">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </a>
-                  </TooltipTrigger>
-                  <TooltipContent>Download PDF</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-
-            {/* Share Button */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" className="border-gray-200 shadow-sm">
-                    <Share className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Share</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
             {/* Memory Button */}
             <Link href="/memory">
               <Button
@@ -582,22 +553,20 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
                   <Save className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Save to Memory</TooltipContent>
+              <TooltipContent>Clip to Memory</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
-          {hasApiKey && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon" onClick={() => setShowExplanation(!showExplanation)}>
-                    <Sparkles className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Explain with AI</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" onClick={() => setShowExplanation(!showExplanation)}>
+                  <Sparkles className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Explain with AI</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       )}
 

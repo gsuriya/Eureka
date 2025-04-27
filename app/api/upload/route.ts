@@ -15,6 +15,28 @@ try {
   console.error('Error creating uploads directory:', error);
 }
 
+// GET handler to fetch all papers
+export async function GET(req: NextRequest) {
+  try {
+    const db = await connectToDatabase();
+    const papersCollection = db.collection(dbModels.papers);
+    
+    // Fetch all papers, projecting only necessary fields for the sidebar
+    const papers = await papersCollection.find({}, {
+      projection: {
+        _id: 1,
+        title: 1,
+        createdAt: 1 // Optional: for sorting or display
+      }
+    }).sort({ createdAt: -1 }).toArray(); // Sort by newest first
+    
+    return NextResponse.json({ papers });
+  } catch (error) {
+    console.error('API GET papers error:', error);
+    return NextResponse.json({ error: 'Failed to fetch papers.' }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // For multipart form data
@@ -53,9 +75,13 @@ export async function POST(req: NextRequest) {
       };
       
       const result = await papersCollection.insertOne(paper);
-      paper._id = result.insertedId;
+      // Create a new object including the inserted ID to return
+      const savedPaper = {
+        ...paper,
+        _id: result.insertedId
+      };
       
-      return NextResponse.json({ paper });
+      return NextResponse.json({ paper: savedPaper });
     } 
     // For JSON data (from previous implementation)
     else {
@@ -101,9 +127,13 @@ export async function POST(req: NextRequest) {
 
       // Save to MongoDB
       const result = await papersCollection.insertOne(paper);
-      paper._id = result.insertedId;
+      // Create a new object including the inserted ID to return
+      const savedPaper = {
+        ...paper,
+        _id: result.insertedId
+      };
 
-      return NextResponse.json({ paper });
+      return NextResponse.json({ paper: savedPaper });
     }
   } catch (error) {
     console.error('API upload error:', error);
