@@ -120,7 +120,7 @@ export default function UploadPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link href="/">
-              <Button variant="ghost" size="sm" className="gap-1 text-royal-500">
+              <Button variant="ghost" size="sm" className="gap-1 text-royal-500 hover:bg-royal-100">
                 <ArrowLeft className="h-4 w-4" /> Back to Home
               </Button>
             </Link>

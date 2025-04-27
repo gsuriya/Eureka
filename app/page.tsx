@@ -9,37 +9,20 @@ export default function LandingPage() {
       <header className="border-b shadow-sm bg-white">
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-2">
-            <div className="bg-royal-500 p-1.5 rounded-lg">
+            <div className="bg-royal-500 p-1.5 rounded-lg flex items-center">
               <BookOpen className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-royal-500">
-              PaperMind
-            </span>
+            <span className="text-xl font-sans font-bold text-royal-500">PaperMind</span>
           </div>
           <nav className="hidden md:flex gap-6">
-            <Link href="/" className="text-sm font-medium text-royal-500 hover:text-royal-600 transition-colors">
-              Home
-            </Link>
-            <Link href="/upload" className="text-sm font-medium hover:text-royal-500 transition-colors">
-              Upload
-            </Link>
-            <Link href="/reader" className="text-sm font-medium hover:text-royal-500 transition-colors">
-              Reader
-            </Link>
-            <Link href="/memory" className="text-sm font-medium hover:text-royal-500 transition-colors">
-              Memory
-            </Link>
+            <Link href="/" className="font-sans font-bold text-royal-700 underline underline-offset-4">Home</Link>
+            <Link href="/upload" className="font-sans font-medium text-royal-500 hover:text-royal-600">Upload</Link>
+            <Link href="/reader" className="font-sans font-medium text-royal-500 hover:text-royal-600">Reader</Link>
+            <Link href="/memory" className="font-sans font-medium text-royal-500 hover:text-royal-600">Memory</Link>
           </nav>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" className="text-royal-500 border-royal-200 shadow-sm hover:shadow">
-              Log in
-            </Button>
-            <Button
-              size="sm"
-              className="bg-royal-500 hover:bg-royal-600 text-white shadow-md hover:shadow-lg transition-all"
-            >
-              Sign up
-            </Button>
+            <Button variant="outline" size="sm" className="font-sans font-medium text-royal-500 border-royal-200 rounded-lg shadow-sm hover:shadow bg-white">Log in</Button>
+            <Button size="sm" className="font-sans font-bold bg-royal-500 hover:bg-royal-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all">Sign up</Button>
           </div>
         </div>
       </header>

@@ -5,7 +5,7 @@ import NextLink from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { BookOpen, Brain, Filter, Search, ZoomIn, ZoomOut } from "lucide-react"
+import { BookOpen, Brain, Filter, Search, ZoomIn, ZoomOut, ArrowLeft } from "lucide-react"
 import { useMobile } from "@/hooks/use-mobile"
 
 // Mock data for memory nodes
@@ -128,7 +128,7 @@ export default function MemoryPage() {
       ctx.scale(zoom, zoom)
 
       // Draw links
-      ctx.strokeStyle = "rgba(200, 200, 200, 0.6)"
+      ctx.strokeStyle = "rgba(13, 69, 131, 0.2)" // Lighter royal blue for links
       ctx.lineWidth = 1
 
       links.forEach((link) => {
@@ -151,10 +151,8 @@ export default function MemoryPage() {
         ctx.beginPath()
         ctx.fillStyle =
           selectedNode?.id === node.id
-            ? "rgba(147, 51, 234, 0.8)" // Purple for selected
-            : node.paperTitle.includes("Attention")
-              ? "rgba(59, 130, 246, 0.7)" // Blue for Attention paper
-              : "rgba(79, 70, 229, 0.7)" // Indigo for others
+            ? "rgba(13, 69, 131, 1)" // Solid royal blue for selected
+            : "rgba(13, 69, 131, 0.7)" // Royal blue for others
         ctx.arc(node.x, node.y, 10, 0, Math.PI * 2)
         ctx.fill()
 
@@ -207,15 +205,15 @@ export default function MemoryPage() {
         })
 
         // Center gravity
-        fx += (canvas.width / (2 * zoom) - node.x) * 0.01
-        fy += (canvas.height / (2 * zoom) - node.y) * 0.01
+        fx += (canvas.width / (2 * zoom) - node.x!) * 0.01
+        fy += (canvas.height / (2 * zoom) - node.y!) * 0.01
 
         // Update velocity and position
         if (node.vx !== undefined && node.vy !== undefined) {
           node.vx = (node.vx + fx) * 0.4
           node.vy = (node.vy + fy) * 0.4
-          node.x += node.vx
-          node.y += node.vy
+          node.x! += node.vx
+          node.y! += node.vy
         }
       })
 
@@ -286,25 +284,22 @@ export default function MemoryPage() {
   )
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-ivory">
       {/* Header */}
-      <header className="border-b">
+      <header className="border-b bg-white shadow-sm">
         <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <NextLink href="/" className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              <span className="font-semibold">PaperMind</span>
+              <div className="bg-royal-500 p-1.5 rounded-lg">
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              <span className="font-sans font-bold text-royal-500">PaperMind</span>
             </NextLink>
           </div>
           <div className="flex items-center gap-4">
-            <NextLink href="/upload">
-              <Button variant="outline" size="sm">
-                Upload
-              </Button>
-            </NextLink>
-            <NextLink href="/reader/demo">
-              <Button variant="outline" size="sm">
-                Reader
+            <NextLink href="/">
+              <Button variant="ghost" size="sm" className="gap-1 text-royal-500 hover:bg-royal-100">
+                <ArrowLeft className="h-4 w-4" /> Back to Home
               </Button>
             </NextLink>
           </div>
@@ -318,15 +313,15 @@ export default function MemoryPage() {
             {/* Sidebar */}
             <div className="w-full md:w-80 space-y-4">
               <div className="flex items-center gap-2">
-                <Brain className="h-5 w-5" />
-                <h1 className="text-2xl font-bold">Memory Graph</h1>
+                <Brain className="h-5 w-5 text-royal-500" />
+                <h1 className="text-2xl font-sans font-bold text-royal-500">Memory Graph</h1>
               </div>
 
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                 <Input
                   placeholder="Search highlights..."
-                  className="pl-10"
+                  className="pl-10 font-sans focus-royal-blue"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -334,8 +329,8 @@ export default function MemoryPage() {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-medium">Highlights</h2>
-                  <Button variant="ghost" size="sm" className="h-8 px-2">
+                  <h2 className="text-sm font-sans font-medium text-gray-700">Highlights</h2>
+                  <Button variant="ghost" size="sm" className="h-8 px-2 text-royal-500 hover:bg-royal-100">
                     <Filter className="h-4 w-4 mr-1" />
                     Filter
                   </Button>
@@ -345,8 +340,8 @@ export default function MemoryPage() {
                   {filteredHighlights.map((highlight) => (
                     <Card
                       key={highlight.id}
-                      className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${
-                        selectedNode?.id === highlight.id ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : ""
+                      className={`cursor-pointer hover:bg-gray-50 transition-colors font-sans border shadow-sm ${
+                        selectedNode?.id === highlight.id ? "border-royal-500 bg-royal-50" : "bg-white"
                       }`}
                       onClick={() => {
                         const node = nodes.find((n) => n.id === highlight.id)
@@ -354,7 +349,7 @@ export default function MemoryPage() {
                       }}
                     >
                       <CardContent className="p-3">
-                        <p className="text-sm line-clamp-2">{highlight.text}</p>
+                        <p className={`text-sm line-clamp-2 ${selectedNode?.id === highlight.id ? 'text-royal-700' : 'text-gray-800'}`}>{highlight.text}</p>
                         <div className="mt-2 flex items-center justify-between">
                           <span className="text-xs text-gray-500">{highlight.paperTitle}</span>
                           <span className="text-xs text-gray-400">{highlight.date}</span>
@@ -369,37 +364,39 @@ export default function MemoryPage() {
             {/* Graph View */}
             <div className="flex-1 relative">
               <div className="absolute top-2 right-2 flex gap-2 z-10">
-                <Button variant="outline" size="icon" onClick={handleZoomIn}>
-                  <ZoomIn className="h-4 w-4" />
+                <Button variant="outline" size="icon" onClick={handleZoomIn} className="bg-white hover:bg-gray-100">
+                  <ZoomIn className="h-4 w-4 text-royal-500" />
                 </Button>
-                <Button variant="outline" size="icon" onClick={handleZoomOut}>
-                  <ZoomOut className="h-4 w-4" />
+                <Button variant="outline" size="icon" onClick={handleZoomOut} className="bg-white hover:bg-gray-100">
+                  <ZoomOut className="h-4 w-4 text-royal-500" />
                 </Button>
               </div>
 
-              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg border h-[calc(100vh-160px)]">
+              <div className="bg-white rounded-lg border h-[calc(100vh-160px)] shadow-sm">
                 <canvas ref={canvasRef} className="w-full h-full" />
               </div>
 
               {selectedNode && (
                 <div className="absolute bottom-4 left-4 right-4 z-10">
-                  <Card>
-                    <CardContent className="p-4">
+                  <Card className="shadow-lg border border-royal-200">
+                    <CardContent className="p-4 font-sans">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium">{selectedNode.paperTitle}</h3>
-                          <p className="mt-2 text-sm">{selectedNode.text}</p>
+                          <h3 className="font-medium text-royal-700">{selectedNode.paperTitle}</h3>
+                          <p className="mt-2 text-sm text-gray-800">{selectedNode.text}</p>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setSelectedNode(null)}>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-gray-500 hover:text-gray-700 hover:bg-gray-100" onClick={() => setSelectedNode(null)}>
                           <span className="sr-only">Close</span>
                           <span>×</span>
                         </Button>
                       </div>
                       <div className="mt-4 flex justify-end gap-2">
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="text-royal-500 border-royal-200 hover:bg-royal-50">
                           View in Context
                         </Button>
-                        <Button size="sm">Find Related</Button>
+                        <Button size="sm" className="bg-royal-500 hover:bg-royal-600 text-white">
+                          Find Related
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
