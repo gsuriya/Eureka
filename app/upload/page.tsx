@@ -20,27 +20,43 @@ export default function UploadPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0])
+      const selectedFile = e.target.files[0];
+      // Validate file type
+      if (selectedFile.type !== 'application/pdf') {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload a PDF file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setFile(selectedFile);
     }
   }
 
   const handleFileUpload = async () => {
     if (!file) return
+
     setIsUploading(true)
+
     try {
-      // Read file as text (for demo, real PDF parsing would be needed)
-      const fileContent = await file.text();
+      // Create FormData to send the file
+      const formData = new FormData();
+      formData.append('file', file);
+      
       const res = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, fileContent }),
+        body: formData,
       });
+      
       const data = await res.json();
+      
       if (res.ok) {
         toast({
           title: "Upload successful",
           description: `${data.paper.title} has been uploaded and processed.`,
         })
+        // Redirect to reader view with the new paper ID
         router.push(`/reader/${data.paper._id}`)
       } else {
         throw new Error(data.error || "Unknown error")
@@ -58,7 +74,9 @@ export default function UploadPage() {
 
   const handleUrlSubmit = async () => {
     if (!url) return
+
     setIsUploading(true)
+
     try {
       const res = await fetch("/api/upload", {
         method: "POST",

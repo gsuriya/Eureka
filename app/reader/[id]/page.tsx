@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { PapersSidebar } from "@/components/papers-sidebar"
 import { PaperTabs } from "@/components/paper-tabs"
+import { PDFViewer } from "@/components/pdf-viewer"
 
 // Mock paper data
 const paperData = {
@@ -103,6 +104,8 @@ const initialOpenPapers = [
 ]
 
 export default function ReaderPage({ params }: { params: { id: string } }) {
+  const [paper, setPaper] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [hasApiKey, setHasApiKey] = useState(false)
   const [apiKey, setApiKey] = useState("")
   const [selectedText, setSelectedText] = useState("")
@@ -111,13 +114,54 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
   const [savedHighlights, setSavedHighlights] = useState<string[]>([])
   const [showSidebar, setShowSidebar] = useState(true)
   const [activePaperId, setActivePaperId] = useState(params.id || "1")
-  const [openPapers, setOpenPapers] = useState(initialOpenPapers)
+  const [openPapers, setOpenPapers] = useState<Array<{ id: string; title: string }>>([])
 
   const selectionRef = useRef<{ x: number; y: number } | null>(null)
   const { toast } = useToast()
 
-  const activeOpenPaper = openPapers.find((paper) => paper.id === activePaperId)
-  const activePaper = paperData[activePaperId as keyof typeof paperData]
+  // Fetch paper data from API
+  useEffect(() => {
+    const fetchPaper = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch(`/api/papers/${params.id}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch paper')
+        }
+        const data = await response.json()
+        setPaper(data.paper)
+        
+        // Add to open papers if not already there
+        setOpenPapers(prev => {
+          if (!prev.some(p => p.id === data.paper._id.toString())) {
+            return [...prev, { id: data.paper._id.toString(), title: data.paper.title }]
+          }
+          return prev
+        })
+        
+        setActivePaperId(data.paper._id)
+      } catch (error) {
+        console.error('Error fetching paper:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to load paper. Please try again.',
+          variant: 'destructive',
+        })
+        // Use mock data as fallback
+        const mockPaper = paperData[params.id as keyof typeof paperData]
+        if (mockPaper) {
+          setPaper(mockPaper)
+          setOpenPapers(initialOpenPapers)
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (params.id) {
+      fetchPaper()
+    }
+  }, [params.id, toast])
 
   const handleTextSelection = () => {
     const selection = window.getSelection()
@@ -211,7 +255,20 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
     return () => window.removeEventListener("resize", handleResize)
   }, [])
 
-  if (!activePaper) {
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <h2 className="text-xl font-medium text-gray-600">Loading paper...</h2>
+        </div>
+      </div>
+    )
+  }
+
+  // Show not found state
+  if (!paper) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -225,6 +282,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
     )
   }
 
+  // Display the PDF if filePath exists
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 paper-texture">
       {/* Header */}
@@ -244,95 +302,80 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
             </Link>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2">
+            {/* Download Button */}
+            {paper.filePath && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="border-gray-200 shadow-sm">
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Previous Page</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-
-              <span className="text-sm">1 / 12</span>
-
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="border-gray-200 shadow-sm">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Next Page</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-
-            <div className="ml-2 flex items-center gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="border-gray-200 shadow-sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    <a 
+                      href={paper.filePath} 
+                      download={paper.originalName || 'paper.pdf'}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                    >
+                      <Button variant="outline" size="icon" className="border-gray-200 shadow-sm">
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </a>
                   </TooltipTrigger>
                   <TooltipContent>Download PDF</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+            )}
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="border-gray-200 shadow-sm">
-                      <Share className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Share</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            {/* Share Button */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon" className="border-gray-200 shadow-sm">
+                    <Share className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Share</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
 
-              <Link href="/memory">
-                <Button
-                  variant="default"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                >
-                  <Lightbulb className="mr-2 h-4 w-4" />
-                  Memory
-                </Button>
-              </Link>
+            {/* Memory Button */}
+            <Link href="/memory">
+              <Button
+                variant="default"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <Lightbulb className="mr-2 h-4 w-4" />
+                Memory
+              </Button>
+            </Link>
 
-              {!hasApiKey && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="border-gray-200 shadow-sm">
-                      <Key className="mr-2 h-4 w-4" />
-                      Add API Key
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-80">
-                    <div className="grid gap-4">
-                      <div className="space-y-2">
-                        <h4 className="font-medium leading-none">OpenAI API Key</h4>
-                        <p className="text-sm text-gray-500">Add your API key to enable AI explanations.</p>
-                      </div>
-                      <div className="grid gap-2">
-                        <Input
-                          id="api-key"
-                          placeholder="sk-..."
-                          value={apiKey}
-                          onChange={(e) => setApiKey(e.target.value)}
-                        />
-                        <Button size="sm" onClick={saveApiKey}>
-                          Save Key
-                        </Button>
-                      </div>
+            {/* API Key Section */}
+            {!hasApiKey && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="border-gray-200 shadow-sm">
+                    <Key className="mr-2 h-4 w-4" />
+                    Add API Key
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">OpenAI API Key</h4>
+                      <p className="text-sm text-gray-500">Add your API key to enable AI explanations.</p>
                     </div>
-                  </PopoverContent>
-                </Popover>
-              )}
-            </div>
+                    <div className="grid gap-2">
+                      <Input
+                        id="api-key"
+                        placeholder="sk-..."
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                      />
+                      <Button size="sm" onClick={saveApiKey}>
+                        Save Key
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </div>
       </header>
@@ -361,44 +404,64 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
             <div className="container max-w-3xl mx-auto px-4">
               {/* Paper Metadata */}
               <div className="mb-8 space-y-4">
-                <h1 className="text-3xl font-serif font-bold">{activePaper.title}</h1>
-                <div className="text-gray-500">
-                  <p>{activePaper.authors}</p>
-                  <p className="mt-1">
-                    {activePaper.venue}, {activePaper.year}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <a
-                    href={activePaper.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 hover:underline flex items-center"
-                  >
-                    View original paper <ExternalLink className="ml-1 h-3 w-3" />
-                  </a>
-                </div>
+                <h1 className="text-3xl font-serif font-bold">{paper.title}</h1>
+                {paper.authors && paper.authors.length > 0 && (
+                  <div className="text-gray-500">
+                    <p>{Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
+                    {paper.venue && paper.year && (
+                      <p className="mt-1">
+                        {paper.venue}, {paper.year}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {paper.url && (
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={paper.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:underline flex items-center"
+                    >
+                      View original paper <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                  </div>
+                )}
               </div>
+
+              {/* PDF Viewer for uploaded PDFs */}
+              {paper.filePath && (
+                <div className="mb-8">
+                  <PDFViewer 
+                    url={paper.filePath} 
+                    fileName={paper.originalName || paper.title} 
+                  />
+                </div>
+              )}
 
               {/* Abstract */}
-              <div className="mb-8">
-                <h2 className="text-xl font-serif font-semibold mb-4">Abstract</h2>
-                <div className="text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-950/50 p-6 rounded-lg border shadow-sm">
-                  {activePaper.abstract}
-                </div>
-              </div>
-
-              {/* Paper Content */}
-              <div className="space-y-8" onMouseUp={handleTextSelection}>
-                {activePaper.sections.map((section, index) => (
-                  <div key={index} className="space-y-4">
-                    <h2 className="text-xl font-serif font-semibold">{section.title}</h2>
-                    <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line bg-white dark:bg-gray-950/50 p-6 rounded-lg border shadow-sm">
-                      {section.content}
-                    </div>
+              {paper.abstract && (
+                <div className="mb-8">
+                  <h2 className="text-xl font-serif font-semibold mb-4">Abstract</h2>
+                  <div className="text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-950/50 p-6 rounded-lg border shadow-sm">
+                    {paper.abstract}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {/* Paper Content - only show for mock data or extracted content */}
+              {paper.sections && paper.sections.length > 0 && (
+                <div className="space-y-8" onMouseUp={handleTextSelection}>
+                  {paper.sections.map((section: any, index: number) => (
+                    <div key={index} className="space-y-4">
+                      <h2 className="text-xl font-serif font-semibold">{section.title}</h2>
+                      <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line bg-white dark:bg-gray-950/50 p-6 rounded-lg border shadow-sm">
+                        {section.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </main>
         </div>
