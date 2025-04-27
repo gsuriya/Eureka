@@ -4,39 +4,39 @@ import { ArrowRight, BookOpen, Upload, Sparkles, BookMarked, Network } from "luc
 
 export default function LandingPage() {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-ivory">
       {/* Header */}
-      <header className="border-b shadow-sm bg-white dark:bg-gray-950">
+      <header className="border-b shadow-sm bg-white">
         <div className="container flex h-16 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-2">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 rounded-lg">
+            <div className="bg-royal-500 p-1.5 rounded-lg">
               <BookOpen className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-serif font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+            <span className="text-xl font-bold text-royal-500">
               PaperMind
             </span>
           </div>
           <nav className="hidden md:flex gap-6">
-            <Link href="/" className="text-sm font-medium hover:text-blue-600 transition-colors">
+            <Link href="/" className="text-sm font-medium text-royal-500 hover:text-royal-600 transition-colors">
               Home
             </Link>
-            <Link href="/upload" className="text-sm font-medium hover:text-blue-600 transition-colors">
+            <Link href="/upload" className="text-sm font-medium hover:text-royal-500 transition-colors">
               Upload
             </Link>
-            <Link href="/reader" className="text-sm font-medium hover:text-blue-600 transition-colors">
+            <Link href="/reader" className="text-sm font-medium hover:text-royal-500 transition-colors">
               Reader
             </Link>
-            <Link href="/memory" className="text-sm font-medium hover:text-blue-600 transition-colors">
+            <Link href="/memory" className="text-sm font-medium hover:text-royal-500 transition-colors">
               Memory
             </Link>
           </nav>
           <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" className="shadow-sm hover:shadow">
+            <Button variant="outline" size="sm" className="text-royal-500 border-royal-200 shadow-sm hover:shadow">
               Log in
             </Button>
             <Button
               size="sm"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-md hover:shadow-lg transition-all"
+              className="bg-royal-500 hover:bg-royal-600 text-white shadow-md hover:shadow-lg transition-all"
             >
               Sign up
             </Button>
@@ -45,7 +45,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32 gradient-bg text-white relative overflow-hidden">
+      <section className="w-full py-12 md:py-24 lg:py-32 bg-royal-500 text-white relative overflow-hidden">
         <div className="absolute inset-0 paper-texture opacity-10"></div>
         <div className="container px-4 md:px-6 relative z-10">
           <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
@@ -55,7 +55,7 @@ export default function LandingPage() {
                 <span>Revolutionizing academic research</span>
               </div>
               <div className="space-y-2">
-                <h1 className="text-4xl font-serif font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
+                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl xl:text-6xl/none">
                   Transform Your <span className="italic">Research</span> Experience
                 </h1>
                 <p className="max-w-[600px] text-white/80 md:text-xl">
@@ -67,7 +67,7 @@ export default function LandingPage() {
                 <Link href="/upload">
                   <Button
                     size="lg"
-                    className="bg-white text-blue-600 hover:bg-white/90 shadow-lg hover:shadow-xl transition-all"
+                    className="bg-white text-royal-500 hover:bg-white/90 shadow-lg hover:shadow-xl transition-all"
                   >
                     Get Started <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
@@ -85,7 +85,7 @@ export default function LandingPage() {
             </div>
             <div className="mx-auto lg:ml-auto flex justify-center">
               <div className="relative w-full max-w-[500px] aspect-video rounded-xl overflow-hidden shadow-2xl border border-white/20 backdrop-blur-sm">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20"></div>
+                <div className="absolute inset-0 bg-royal-400/20"></div>
                 <img
                   src="/placeholder.svg?height=500&width=800"
                   alt="PaperMind interface preview"
@@ -96,14 +96,14 @@ export default function LandingPage() {
                     <div className="h-4 w-4/5 bg-white/30 rounded mb-3"></div>
                     <div className="h-3 w-3/5 bg-white/30 rounded mb-6"></div>
                     <div className="flex gap-3 mb-4">
-                      <div className="h-8 w-8 rounded-full bg-blue-500/50"></div>
+                      <div className="h-8 w-8 rounded-full bg-royal-300/50"></div>
                       <div className="flex-1">
                         <div className="h-2 bg-white/30 rounded mb-2"></div>
                         <div className="h-2 w-4/5 bg-white/30 rounded"></div>
                       </div>
                     </div>
                     <div className="flex gap-3">
-                      <div className="h-8 w-8 rounded-full bg-purple-500/50"></div>
+                      <div className="h-8 w-8 rounded-full bg-royal-400/50"></div>
                       <div className="flex-1">
                         <div className="h-2 bg-white/30 rounded mb-2"></div>
                         <div className="h-2 w-3/5 bg-white/30 rounded"></div>
@@ -115,34 +115,34 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white dark:from-gray-950 to-transparent"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-ivory to-transparent"></div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="w-full py-12 md:py-24 lg:py-32 paper-texture">
+      <section id="features" className="w-full py-12 md:py-24 lg:py-32 bg-ivory">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center">
-            <div className="inline-flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 p-2 text-blue-600 dark:text-blue-400">
+            <div className="inline-flex items-center justify-center rounded-full bg-royal-100 p-2 text-royal-500">
               <Sparkles className="h-5 w-5" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-3xl font-serif font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl text-royal-500">
                 Powerful Features for <span className="italic">Researchers</span>
               </h2>
-              <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+              <p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                 Everything you need to enhance your research workflow and connect ideas across papers.
               </p>
             </div>
           </div>
           <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3 lg:gap-12 mt-12">
             {/* Feature 1 */}
-            <div className="flex flex-col items-center space-y-4 text-center card-hover rounded-xl p-6 border bg-white dark:bg-gray-950/50 shadow-elegant">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 shadow-md">
+            <div className="flex flex-col items-center space-y-4 text-center rounded-xl p-6 border bg-white shadow-elegant">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-royal-500 shadow-md">
                 <Upload className="h-8 w-8 text-white" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-serif font-bold">Seamless Upload</h3>
-                <p className="text-gray-500 dark:text-gray-400">
+                <h3 className="text-xl font-bold text-royal-500">Seamless Upload</h3>
+                <p className="text-gray-600">
                   Upload PDFs directly or use our browser extension to capture papers from the web with automatic
                   metadata extraction.
                 </p>
@@ -150,20 +150,20 @@ export default function LandingPage() {
               <div className="pt-4 mt-auto">
                 <Link
                   href="/upload"
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                  className="text-royal-500 hover:text-royal-600 text-sm font-medium flex items-center"
                 >
                   Try it now <ArrowRight className="h-3 w-3 ml-1" />
                 </Link>
               </div>
             </div>
             {/* Feature 2 */}
-            <div className="flex flex-col items-center space-y-4 text-center card-hover rounded-xl p-6 border bg-white dark:bg-gray-950/50 shadow-elegant">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600 shadow-md">
+            <div className="flex flex-col items-center space-y-4 text-center rounded-xl p-6 border bg-white shadow-elegant">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-royal-500 shadow-md">
                 <BookMarked className="h-8 w-8 text-white" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-serif font-bold">Enhanced Reading</h3>
-                <p className="text-gray-500 dark:text-gray-400">
+                <h3 className="text-xl font-bold text-royal-500">Enhanced Reading</h3>
+                <p className="text-gray-600">
                   Clean, sophisticated view with AI-powered highlighting and explanations of complex concepts tailored
                   for academic research.
                 </p>
@@ -171,20 +171,20 @@ export default function LandingPage() {
               <div className="pt-4 mt-auto">
                 <Link
                   href="/reader"
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                  className="text-royal-500 hover:text-royal-600 text-sm font-medium flex items-center"
                 >
                   Explore reader <ArrowRight className="h-3 w-3 ml-1" />
                 </Link>
               </div>
             </div>
             {/* Feature 3 */}
-            <div className="flex flex-col items-center space-y-4 text-center card-hover rounded-xl p-6 border bg-white dark:bg-gray-950/50 shadow-elegant">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-purple-600 shadow-md">
+            <div className="flex flex-col items-center space-y-4 text-center rounded-xl p-6 border bg-white shadow-elegant">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-royal-500 shadow-md">
                 <Network className="h-8 w-8 text-white" />
               </div>
               <div className="space-y-2">
-                <h3 className="text-xl font-serif font-bold">Knowledge Graph</h3>
-                <p className="text-gray-500 dark:text-gray-400">
+                <h3 className="text-xl font-bold text-royal-500">Knowledge Graph</h3>
+                <p className="text-gray-600">
                   Visualize connections between ideas and quotes across all your research papers with advanced semantic
                   linking.
                 </p>
@@ -192,7 +192,7 @@ export default function LandingPage() {
               <div className="pt-4 mt-auto">
                 <Link
                   href="/memory"
-                  className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center"
+                  className="text-royal-500 hover:text-royal-600 text-sm font-medium flex items-center"
                 >
                   View graph <ArrowRight className="h-3 w-3 ml-1" />
                 </Link>
@@ -203,17 +203,17 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="w-full py-12 md:py-24 lg:py-32 bg-gray-50 dark:bg-gray-900/50">
+      <section className="w-full py-12 md:py-24 lg:py-32 bg-white">
         <div className="container px-4 md:px-6">
           <div className="flex flex-col items-center justify-center space-y-4 text-center mb-12">
-            <div className="inline-flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 p-2 text-blue-600 dark:text-blue-400">
+            <div className="inline-flex items-center justify-center rounded-full bg-royal-100 p-2 text-royal-500">
               <BookOpen className="h-5 w-5" />
             </div>
             <div className="space-y-2">
-              <h2 className="text-3xl font-serif font-bold tracking-tighter sm:text-4xl">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl text-royal-500">
                 Trusted by Academic Professionals
               </h2>
-              <p className="max-w-[900px] text-gray-500 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed dark:text-gray-400">
+              <p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
                 See what researchers are saying about PaperMind
               </p>
             </div>
@@ -221,9 +221,9 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Testimonial 1 */}
-            <div className="rounded-xl border bg-white dark:bg-gray-950/50 p-6 shadow-elegant">
+            <div className="rounded-xl border bg-ivory p-6 shadow-elegant">
               <div className="flex items-start gap-4 mb-4">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
+                <div className="h-10 w-10 rounded-full bg-royal-500 flex items-center justify-center text-white font-bold">
                   JD
                 </div>
                 <div>
@@ -231,16 +231,16 @@ export default function LandingPage() {
                   <p className="text-sm text-gray-500">Professor of Computer Science, MIT</p>
                 </div>
               </div>
-              <p className="text-gray-600 dark:text-gray-300 italic">
+              <p className="text-gray-600 italic">
                 "PaperMind has transformed how I approach literature reviews. The knowledge graph feature helps me
                 discover connections I would have otherwise missed."
               </p>
             </div>
 
             {/* Testimonial 2 */}
-            <div className="rounded-xl border bg-white dark:bg-gray-950/50 p-6 shadow-elegant">
+            <div className="rounded-xl border bg-ivory p-6 shadow-elegant">
               <div className="flex items-start gap-4 mb-4">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                <div className="h-10 w-10 rounded-full bg-royal-500 flex items-center justify-center text-white font-bold">
                   RS
                 </div>
                 <div>
@@ -248,16 +248,16 @@ export default function LandingPage() {
                   <p className="text-sm text-gray-500">Research Director, Stanford AI Lab</p>
                 </div>
               </div>
-              <p className="text-gray-600 dark:text-gray-300 italic">
+              <p className="text-gray-600 italic">
                 "The AI-powered explanations have been invaluable for quickly understanding complex concepts across
                 interdisciplinary research papers."
               </p>
             </div>
 
             {/* Testimonial 3 */}
-            <div className="rounded-xl border bg-white dark:bg-gray-950/50 p-6 shadow-elegant">
+            <div className="rounded-xl border bg-ivory p-6 shadow-elegant">
               <div className="flex items-start gap-4 mb-4">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold">
+                <div className="h-10 w-10 rounded-full bg-royal-500 flex items-center justify-center text-white font-bold">
                   AK
                 </div>
                 <div>
@@ -265,7 +265,7 @@ export default function LandingPage() {
                   <p className="text-sm text-gray-500">Neuroscience Researcher, Harvard</p>
                 </div>
               </div>
-              <p className="text-gray-600 dark:text-gray-300 italic">
+              <p className="text-gray-600 italic">
                 "PaperMind's memory system has become an essential part of my research workflow. It's like having a
                 second brain for academic literature."
               </p>
@@ -275,12 +275,12 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="w-full py-12 md:py-24 lg:py-32 gradient-bg text-white relative overflow-hidden">
+      <section className="w-full py-12 md:py-24 lg:py-32 bg-royal-500 text-white relative overflow-hidden">
         <div className="absolute inset-0 paper-texture opacity-10"></div>
         <div className="container px-4 md:px-6 relative z-10">
           <div className="flex flex-col items-center justify-center space-y-6 text-center">
             <div className="space-y-2">
-              <h2 className="text-3xl font-serif font-bold tracking-tighter sm:text-4xl md:text-5xl">
+              <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">
                 Ready to Transform Your Research?
               </h2>
               <p className="max-w-[600px] mx-auto text-white/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
@@ -291,7 +291,7 @@ export default function LandingPage() {
               <Link href="/upload">
                 <Button
                   size="lg"
-                  className="bg-white text-blue-600 hover:bg-white/90 shadow-lg hover:shadow-xl transition-all"
+                  className="bg-white text-royal-500 hover:bg-white/90 shadow-lg hover:shadow-xl transition-all"
                 >
                   Get Started <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
@@ -306,31 +306,31 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-gray-900 to-transparent"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-ivory to-transparent"></div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 bg-gray-50 dark:bg-gray-900/50">
+      <footer className="border-t py-12 bg-ivory">
         <div className="container px-4 md:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 rounded-lg">
+                <div className="bg-royal-500 p-1.5 rounded-lg">
                   <BookOpen className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-serif font-bold">PaperMind</span>
+                <span className="font-bold text-royal-500">PaperMind</span>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-gray-600 mb-4">
                 Transform your research experience with AI-powered insights and an intelligent memory system.
               </p>
               <div className="flex gap-4">
-                <a href="#" className="text-gray-400 hover:text-gray-500">
+                <a href="#" className="text-royal-400 hover:text-royal-500">
                   <span className="sr-only">Twitter</span>
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
                   </svg>
                 </a>
-                <a href="#" className="text-gray-400 hover:text-gray-500">
+                <a href="#" className="text-royal-400 hover:text-royal-500">
                   <span className="sr-only">GitHub</span>
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path
@@ -340,7 +340,7 @@ export default function LandingPage() {
                     />
                   </svg>
                 </a>
-                <a href="#" className="text-gray-400 hover:text-gray-500">
+                <a href="#" className="text-royal-400 hover:text-royal-500">
                   <span className="sr-only">LinkedIn</span>
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path
@@ -353,91 +353,91 @@ export default function LandingPage() {
               </div>
             </div>
             <div>
-              <h3 className="font-medium mb-4">Product</h3>
+              <h3 className="font-medium mb-4 text-royal-500">Product</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Features
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Pricing
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     API
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Integrations
                   </a>
                 </li>
               </ul>
             </div>
             <div>
-              <h3 className="font-medium mb-4">Resources</h3>
+              <h3 className="font-medium mb-4 text-royal-500">Resources</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Documentation
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Guides
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Support
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     API Status
                   </a>
                 </li>
               </ul>
             </div>
             <div>
-              <h3 className="font-medium mb-4">Company</h3>
+              <h3 className="font-medium mb-4 text-royal-500">Company</h3>
               <ul className="space-y-2 text-sm">
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     About
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Blog
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Careers
                   </a>
                 </li>
                 <li>
-                  <a href="#" className="text-gray-500 hover:text-blue-600 transition-colors">
+                  <a href="#" className="text-gray-600 hover:text-royal-500 transition-colors">
                     Press
                   </a>
                 </li>
               </ul>
             </div>
           </div>
-          <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-500 dark:text-gray-400">© 2024 PaperMind. All rights reserved.</p>
+          <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center">
+            <p className="text-sm text-gray-600">© 2024 PaperMind. All rights reserved.</p>
             <div className="flex gap-4 mt-4 md:mt-0">
-              <Link href="#" className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
+              <Link href="#" className="text-sm text-gray-600 hover:text-royal-500 transition-colors">
                 Terms
               </Link>
-              <Link href="#" className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
+              <Link href="#" className="text-sm text-gray-600 hover:text-royal-500 transition-colors">
                 Privacy
               </Link>
-              <Link href="#" className="text-sm text-gray-500 hover:text-blue-600 transition-colors">
+              <Link href="#" className="text-sm text-gray-600 hover:text-royal-500 transition-colors">
                 Contact
               </Link>
             </div>
