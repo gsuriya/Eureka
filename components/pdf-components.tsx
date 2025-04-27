@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useRef, RefCallback } from "react"
 import { Document, Page, pdfjs } from "react-pdf"
+import dynamic from "next/dynamic"
+
+// Dynamically import the HighlightPopup component
+const HighlightPopup = dynamic(() => import('./highlight-popup'), {
+  ssr: false,
+});
 
 // Set worker source - only executed on client
 if (typeof window !== 'undefined') {
@@ -15,9 +21,11 @@ interface PDFComponentsProps {
   pageNumber?: number
   scale: number
   showAllPages?: boolean
+  paperId?: string
 }
 
 interface Highlight {
+  _id?: string;
   page: number;
   position: {
     boundingRect: {
@@ -30,13 +38,26 @@ interface Highlight {
     };
     text: string;
   };
+  text?: string;
+  summary?: string;
 }
 
-export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, scale, showAllPages = false }: PDFComponentsProps) {
+interface PopupState {
+  visible: boolean;
+  highlight: Highlight | null;
+  position: { x: number; y: number };
+}
+
+export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, scale, showAllPages = false, paperId = '' }: PDFComponentsProps) {
   const [error, setError] = useState<string | null>(null);
   const [fileUrl, setFileUrl] = useState<string>(file);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [numPages, setNumPages] = useState<number>(0);
+  const [popup, setPopup] = useState<PopupState>({
+    visible: false,
+    highlight: null,
+    position: { x: 0, y: 0 }
+  });
   const textLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<HTMLDivElement[]>([]);
@@ -59,6 +80,29 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
       console.log("Using original PDF URL:", file);
     }
   }, [file]);
+
+  // Load stored highlights on component mount
+  useEffect(() => {
+    if (paperId) {
+      fetchHighlights();
+    }
+  }, [paperId]);
+
+  const fetchHighlights = async () => {
+    try {
+      if (!paperId) return;
+      
+      const response = await fetch(`/api/papers/${paperId}/highlights`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch highlights');
+      }
+      
+      const data = await response.json();
+      setHighlights(data.highlights || []);
+    } catch (error) {
+      console.error('Error fetching highlights:', error);
+    }
+  };
 
   const handleError = (err: Error) => {
     console.error("PDF Error:", err);
@@ -127,6 +171,30 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     }
   };
 
+  // Handle right click on a highlight
+  const handleHighlightContextMenu = (e: React.MouseEvent, highlight: Highlight) => {
+    e.preventDefault();
+    
+    // Show popup at the mouse position
+    setPopup({
+      visible: true,
+      highlight,
+      position: { 
+        x: e.clientX, 
+        y: e.clientY 
+      }
+    });
+  };
+
+  // Close the popup
+  const closePopup = () => {
+    setPopup({
+      visible: false,
+      highlight: null,
+      position: { x: 0, y: 0 }
+    });
+  };
+
   // Create a ref callback to store page element references
   const setPageRef: RefCallback<HTMLDivElement> = (element: HTMLDivElement | null) => {
     if (!element) return;
@@ -168,7 +236,7 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
           .map((highlight, index) => (
             <div
               key={index}
-              className="absolute bg-yellow-200 opacity-50 pointer-events-none z-10"
+              className="absolute bg-yellow-200 opacity-50 z-10 cursor-pointer"
               style={{
                 left: highlight.position.boundingRect.x1,
                 top: highlight.position.boundingRect.y1,
@@ -176,6 +244,7 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
                 height: highlight.position.boundingRect.height,
               }}
               title={highlight.position.text}
+              onContextMenu={(e) => handleHighlightContextMenu(e, highlight)}
             />
           ))}
       </div>
@@ -221,11 +290,25 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
           </div>
         </Document>
         
+        {/* AI Summary Popup */}
+        {popup.visible && popup.highlight && (
+          <HighlightPopup
+            highlight={{
+              ...popup.highlight,
+              text: popup.highlight.position.text
+            }}
+            paperId={paperId}
+            onClose={closePopup}
+            position={popup.position}
+          />
+        )}
+        
         {/* Display highlight count */}
         {highlights.length > 0 && (
           <div className="mt-4 p-2 bg-blue-50 rounded-md border border-blue-100">
             <p className="text-sm text-blue-800">
               {highlights.length} highlight{highlights.length !== 1 ? 's' : ''} created.
+              <span className="text-xs ml-2 text-gray-600">(Right-click to view or clip)</span>
             </p>
           </div>
         )}

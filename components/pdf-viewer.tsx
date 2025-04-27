@@ -18,9 +18,10 @@ const PDFComponents = dynamic(() => import('./pdf-components'), {
 interface PDFViewerProps {
   url: string
   fileName?: string
+  paperId?: string
 }
 
-export function PDFViewer({ url, fileName }: PDFViewerProps) {
+export function PDFViewer({ url, fileName, paperId }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null)
   const [scale, setScale] = useState(1.2)
 
@@ -44,6 +45,7 @@ export function PDFViewer({ url, fileName }: PDFViewerProps) {
             onLoadSuccess={onDocumentLoadSuccess} 
             scale={scale}
             showAllPages={true}
+            paperId={paperId}
           />
         </div>
       </div>
