@@ -50,7 +50,11 @@ export function PDFViewer({ url, fileName, paperId }: PDFViewerProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between bg-white rounded-lg shadow-sm p-2 mb-6 w-full max-w-3xl">
+      {/* Zoom Bar - now fixed at the bottom of the screen */}
+      <div
+        className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-sm p-2 w-full max-w-3xl z-50 flex items-center justify-between"
+        style={{ pointerEvents: 'auto' }}
+      >
         <div className="flex items-center">
           <span className="mx-2 text-sm text-gray-700">
             {numPages || "-"} Pages
