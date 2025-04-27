@@ -38,13 +38,13 @@ export function PDFViewer({ url, fileName }: PDFViewerProps) {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 mb-4 w-full max-w-3xl">
+      <div className="bg-white rounded-lg shadow-elegant p-4 mb-4 w-full max-w-3xl">
         <Document
           file={url}
           onLoadSuccess={onDocumentLoadSuccess}
           loading={
             <div className="flex justify-center items-center h-96">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-royal-500"></div>
             </div>
           }
           error={
@@ -65,14 +65,14 @@ export function PDFViewer({ url, fileName }: PDFViewerProps) {
             className="flex justify-center"
             loading={
               <div className="flex justify-center items-center h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-royal-500"></div>
               </div>
             }
           />
         </Document>
       </div>
 
-      <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg shadow p-2 mb-6 w-full max-w-md">
+      <div className="flex items-center justify-between bg-white rounded-lg shadow-sm p-2 mb-6 w-full max-w-md">
         <div className="flex items-center">
           <Button
             variant="outline"
@@ -80,10 +80,11 @@ export function PDFViewer({ url, fileName }: PDFViewerProps) {
             onClick={() => changePage(-1)}
             disabled={pageNumber <= 1}
             aria-label="Previous page"
+            className="border-gray-200 text-royal-500 hover:text-royal-600 hover:border-royal-200"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="mx-2 text-sm">
+          <span className="mx-2 text-sm text-gray-700">
             Page {pageNumber} of {numPages || "-"}
           </span>
           <Button
@@ -92,6 +93,7 @@ export function PDFViewer({ url, fileName }: PDFViewerProps) {
             onClick={() => changePage(1)}
             disabled={numPages !== null && pageNumber >= numPages}
             aria-label="Next page"
+            className="border-gray-200 text-royal-500 hover:text-royal-600 hover:border-royal-200"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -104,16 +106,18 @@ export function PDFViewer({ url, fileName }: PDFViewerProps) {
             onClick={() => changeScale(-0.1)}
             disabled={scale <= 0.5}
             aria-label="Zoom out"
+            className="border-gray-200 text-royal-500 hover:text-royal-600 hover:border-royal-200"
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="mx-2 text-sm">{Math.round(scale * 100)}%</span>
+          <span className="mx-2 text-sm text-gray-700">{Math.round(scale * 100)}%</span>
           <Button
             variant="outline"
             size="sm"
             onClick={() => changeScale(0.1)}
             disabled={scale >= 2.5}
             aria-label="Zoom in"
+            className="border-gray-200 text-royal-500 hover:text-royal-600 hover:border-royal-200"
           >
             <ZoomIn className="h-4 w-4" />
           </Button>

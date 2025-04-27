@@ -284,19 +284,19 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
 
   // Display the PDF if filePath exists
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 paper-texture">
+    <div className="flex flex-col min-h-screen bg-ivory">
       {/* Header */}
-      <header className="sticky top-0 z-20 border-b bg-white dark:bg-gray-950 shadow-sm">
+      <header className="sticky top-0 z-20 border-b bg-white shadow-sm">
         <div className="container flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setShowSidebar(!showSidebar)}>
               <Menu className="h-5 w-5" />
             </Button>
             <Link href="/" className="flex items-center gap-2">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-1.5 rounded-lg">
+              <div className="bg-royal-500 p-1.5 rounded-lg">
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
-              <span className="font-serif font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 hidden md:inline">
+              <span className="font-bold text-royal-500 hidden md:inline">
                 PaperMind
               </span>
             </Link>
@@ -339,7 +339,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
             <Link href="/memory">
               <Button
                 variant="default"
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="bg-royal-500 hover:bg-royal-600 text-white"
               >
                 <Lightbulb className="mr-2 h-4 w-4" />
                 Memory
@@ -367,8 +367,9 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
                         placeholder="sk-..."
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
+                        className="focus-royal-blue"
                       />
-                      <Button size="sm" onClick={saveApiKey}>
+                      <Button size="sm" className="bg-royal-500 hover:bg-royal-600" onClick={saveApiKey}>
                         Save Key
                       </Button>
                     </div>
@@ -442,8 +443,8 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
               {/* Abstract */}
               {paper.abstract && (
                 <div className="mb-8">
-                  <h2 className="text-xl font-serif font-semibold mb-4">Abstract</h2>
-                  <div className="text-gray-700 dark:text-gray-300 leading-relaxed bg-white dark:bg-gray-950/50 p-6 rounded-lg border shadow-sm">
+                  <h2 className="text-xl font-semibold mb-4 text-gray-800">Abstract</h2>
+                  <div className="text-gray-700 leading-relaxed bg-white p-6 rounded-lg border shadow-sm">
                     {paper.abstract}
                   </div>
                 </div>
@@ -454,8 +455,8 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
                 <div className="space-y-8" onMouseUp={handleTextSelection}>
                   {paper.sections.map((section: any, index: number) => (
                     <div key={index} className="space-y-4">
-                      <h2 className="text-xl font-serif font-semibold">{section.title}</h2>
-                      <div className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line bg-white dark:bg-gray-950/50 p-6 rounded-lg border shadow-sm">
+                      <h2 className="text-xl font-semibold text-gray-800">{section.title}</h2>
+                      <div className="text-gray-700 leading-relaxed whitespace-pre-line bg-white p-6 rounded-lg border shadow-sm">
                         {section.content}
                       </div>
                     </div>
@@ -470,7 +471,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
       {/* Selection Popover */}
       {selectedText && selectionRef.current && (
         <div
-          className="fixed z-50 bg-white dark:bg-gray-800 shadow-lg rounded-lg p-2 flex gap-2"
+          className="fixed z-50 bg-white shadow-lg rounded-lg p-2 flex gap-2"
           style={{
             left: `${selectionRef.current.x}px`,
             top: `${selectionRef.current.y + 10}px`,
@@ -506,10 +507,10 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
       {/* AI Explanation Card */}
       {showExplanation && aiExplanation && (
         <div className="fixed bottom-4 right-4 z-50 max-w-md">
-          <Card className="p-4 shadow-lg border-2 border-blue-100 dark:border-blue-900/30">
+          <Card className="p-4 shadow-lg border border-royal-100">
             <div className="flex justify-between items-start mb-2">
               <div className="flex items-center">
-                <Sparkles className="h-4 w-4 mr-2 text-purple-500" />
+                <Sparkles className="h-4 w-4 mr-2 text-royal-500" />
                 <h3 className="font-medium">AI Explanation</h3>
               </div>
               <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowExplanation(false)}>
