@@ -161,18 +161,6 @@ export function PapersSidebar({ isOpen, onClose, activePaperId }: PapersSidebarP
                       }}
                     >
                       <div className="flex items-start gap-3">
-                        <button
-                          className="flex-shrink-0 p-1 rounded hover:bg-red-100 transition-colors"
-                          title="Delete paper"
-                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(paper._id); }}
-                          disabled={deletingId === paper._id}
-                        >
-                          {deletingId === paper._id ? (
-                            <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
-                          ) : (
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          )}
-                        </button>
                         <div
                           className={`p-2 rounded-md ${
                             paper._id === activePaperId
@@ -191,6 +179,19 @@ export function PapersSidebar({ isOpen, onClose, activePaperId }: PapersSidebarP
                             {paper.title}
                           </h3>
                         </div>
+                        {/* Delete button always visible */}
+                        <button
+                          className="flex-shrink-0 p-1 rounded hover:bg-red-100 transition-colors"
+                          title="Delete paper"
+                          onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleDelete(paper._id); }}
+                          disabled={deletingId === paper._id}
+                        >
+                          {deletingId === paper._id ? (
+                            <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                          ) : (
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          )}
+                        </button>
                       </div>
                     </a>
                   </Link>
