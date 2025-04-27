@@ -112,8 +112,6 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
   
   const [paper, setPaper] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [hasApiKey, setHasApiKey] = useState(false)
-  const [apiKey, setApiKey] = useState("")
   const [selectedText, setSelectedText] = useState("")
   const [aiExplanation, setAiExplanation] = useState("")
   const [showExplanation, setShowExplanation] = useState(false)
@@ -302,16 +300,6 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
     }
   }
 
-  const saveApiKey = () => {
-    if (apiKey.trim()) {
-      setHasApiKey(true)
-      toast({
-        title: "API Key saved",
-        description: "You can now use AI explanations when highlighting text.",
-      })
-    }
-  }
-
   const handlePaperSelect = (id: string) => {
     // If paper is already open, just activate it
     if (openPapers.some((paper) => paper.id === id)) {
@@ -413,38 +401,6 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
                 Memory
               </Button>
             </Link>
-
-            {/* API Key Section */}
-            {!hasApiKey && (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="border-gray-200 shadow-sm">
-                    <Key className="mr-2 h-4 w-4" />
-                    Add API Key
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80">
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <h4 className="font-medium leading-none">OpenAI API Key</h4>
-                      <p className="text-sm text-gray-500">Add your API key to enable AI explanations.</p>
-                    </div>
-                    <div className="grid gap-2">
-                      <Input
-                        id="api-key"
-                        placeholder="sk-..."
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        className="focus-royal-blue"
-                      />
-                      <Button size="sm" className="bg-royal-500 hover:bg-royal-600" onClick={saveApiKey}>
-                        Save Key
-                      </Button>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            )}
           </div>
         </div>
       </header>

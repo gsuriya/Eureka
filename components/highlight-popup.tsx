@@ -23,6 +23,7 @@ interface Highlight {
   text?: string;
   summary?: string;
   context?: string;
+  note?: string;
 }
 
 // Helper function to format markdown-like text into HTML elements
@@ -89,9 +90,11 @@ interface HighlightPopupProps {
   onClose: () => void
   position: { x: number; y: number }
   onDelete?: (highlight: Highlight) => void
+  onSaveNote?: (noteText: string) => void
+  isNoteMode?: boolean
 }
 
-export default function HighlightPopup({ highlight, paperId, onClose, position, onDelete }: HighlightPopupProps) {
+export default function HighlightPopup({ highlight, paperId, onClose, position, onDelete, onSaveNote, isNoteMode: initialNoteMode = false }: HighlightPopupProps) {
   const [clipStatus, setClipStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [isClipping, setIsClipping] = useState<boolean>(false);
   const [explainStatus, setExplainStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -99,6 +102,9 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
   const [summary, setSummary] = useState<string>('Generating explanation...'); // Keep local summary
   const [explanation, setExplanation] = useState<string>('');
   const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [isNoteMode, setIsNoteMode] = useState<boolean>(initialNoteMode);
+  const [noteText, setNoteText] = useState<string>('');
+  const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
   const popupRef = useRef<HTMLDivElement>(null);
 
   // Close popup on click outside
@@ -114,7 +120,7 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
     }
   }, [onClose]);
 
-  // Initialize summary based on highlight prop
+  // Initialize summary and note based on highlight prop
   useEffect(() => {
     console.log('HighlightPopup DEBUG:', {
       highlightId: highlight._id,
@@ -133,13 +139,25 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
         setSummary('Text selected. Click "Explain" for details.'); // Update initial summary
       }
     }
+    
+    // Set note text if it exists on the highlight
+    if (highlight.note) {
+      setNoteText(highlight.note);
+    }
+    
     // Reset explanation state when highlight changes
     setExplanation('');
     setIsTyping(false);
     setExplainStatus('idle');
     setIsExplaining(false);
+    setIsNoteMode(false);
 
   }, [highlight]); // Depend only on highlight
+
+  // Update isNoteMode when initialNoteMode prop changes
+  useEffect(() => {
+    setIsNoteMode(initialNoteMode);
+  }, [initialNoteMode]);
 
   const handleClip = async () => {
     if (isClipping) return; // Prevent multiple clicks
@@ -280,21 +298,86 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
     hasDeleteHandler: !!onDelete
   });
 
+  const handleTakeNote = () => {
+    setIsNoteMode(true);
+  };
+
+  const handleSaveNote = async () => {
+    if (isSavingNote) return; // Prevent multiple saves
+    
+    setIsSavingNote(true);
+    try {
+      // If parent provided onSaveNote callback, use it
+      if (onSaveNote) {
+        onSaveNote(noteText);
+        setIsNoteMode(false);
+        return;
+      }
+      
+      // Otherwise, use the original implementation
+      // Only send API request if highlight has an ID
+      if (highlight._id) {
+        const apiUrl = `/api/papers/${paperId}/highlights/${highlight._id}/note`;
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note: noteText }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to save note: ${errorText}`);
+        }
+        
+        // Could display success message here
+      }
+      
+      // Exit note mode
+      setIsNoteMode(false);
+    } catch (error) {
+      console.error('Error saving note:', error);
+      // Could display error message here
+    } finally {
+      setIsSavingNote(false);
+    }
+  };
+
+  const handleCancelNote = () => {
+    // If there was a previous note, restore it
+    if (highlight.note) {
+      setNoteText(highlight.note);
+    }
+    setIsNoteMode(false);
+  };
+
   return (
     <Card
       ref={popupRef}
-      className={`absolute z-50 bg-white dark:bg-slate-800 shadow-lg rounded-lg p-4 border border-slate-200 dark:border-slate-700 transition-all duration-300 ${explanation ? 'w-[500px] max-w-[90vw]' : 'w-96'}`}
+      className={`absolute z-50 bg-white dark:bg-slate-800 shadow-lg rounded-lg p-4 border border-slate-200 dark:border-slate-700 transition-all duration-300 ${isNoteMode ? 'w-[500px] max-w-[90vw]' : explanation ? 'w-[500px] max-w-[90vw]' : 'w-96'}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        maxHeight: explanation ? '70vh' : 'auto',
-        overflowY: explanation ? 'auto' : 'visible'
+        maxHeight: isNoteMode || explanation ? '70vh' : 'auto',
+        overflowY: isNoteMode || explanation ? 'auto' : 'visible'
       }}
     >
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 flex items-center">
-          <Lightbulb className="text-amber-500 mr-2 h-5 w-5" />
-          Understanding This Concept
+          {isNoteMode ? (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" className="text-yellow-500 mr-2 h-5 w-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path>
+                <path d="m15 9-6 6"></path>
+                <path d="m9 9 6 6"></path>
+              </svg>
+              Add Your Note
+            </>
+          ) : (
+            <>
+              <Lightbulb className="text-amber-500 mr-2 h-5 w-5" />
+              Understanding This Concept
+            </>
+          )}
         </h3>
         <div className="flex gap-2">
           {/* Share Button (Functionality TBD) */}
@@ -309,7 +392,7 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
               className="p-1 h-7 w-7 hover:bg-red-100 hover:text-red-600"
               title="Delete highlight"
               onClick={handleDelete}
-              disabled={isClipping || isExplaining} // Disable while other actions are in progress
+              disabled={isClipping || isExplaining || isNoteMode} // Disable while other actions are in progress
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -330,69 +413,132 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
         "{highlight.text || highlight.position.text || "Selected text"}"
       </div>
 
-      {/* Explanation Area */}
-      <div className="mb-4 prose prose-sm dark:prose-invert max-w-none min-h-[3rem]"> {/* Added min-height */}
-        {isExplaining && explainStatus === 'loading' && !isTyping && (
-           <div className="flex items-center justify-center text-slate-500 dark:text-slate-400">
-             <Loader2 size={16} className="animate-spin mr-2" />
-             <span>Generating explanation...</span>
-           </div>
-        )}
-        {isTyping && explanation ? (
-          <TypingAnimation
-            text={explanation}
-            speed={5} // Adjust speed as needed
-            onComplete={() => {
-              setIsTyping(false);
-              setIsExplaining(false); // Mark explanation as fully complete
-            }}
+      {/* Note Taking UI */}
+      {isNoteMode ? (
+        <div className="mb-4">
+          <textarea
+            className="w-full h-32 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-md shadow-inner text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
+            placeholder="Type your notes here..."
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
           />
-        ) : explanation && !isTyping ? ( // Show full text once typing is done
-          formatText(explanation)
-        ) : !isExplaining && explainStatus !== 'loading' ? ( // Show summary if not explaining/loading
-          <div className="text-sm text-slate-700 dark:text-slate-300">
-            {summary}
+          <div className="flex justify-end space-x-2 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancelNote}
+              className="border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-300"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveNote}
+              disabled={isSavingNote}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white dark:bg-yellow-600 dark:hover:bg-yellow-700"
+            >
+              {isSavingNote ? (
+                <>
+                  <Loader2 size={16} className="animate-spin mr-1" />
+                  Saving...
+                </>
+              ) : (
+                "Save Note"
+              )}
+            </Button>
           </div>
-        ) : null}
-         {explainStatus === 'error' && (
-            <p className="text-sm text-red-600 dark:text-red-400 mt-2">{explanation}</p>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Explanation Area - Only show when not in note mode */
+        <div className="mb-4 prose prose-sm dark:prose-invert max-w-none min-h-[3rem]"> {/* Added min-height */}
+          {isExplaining && explainStatus === 'loading' && !isTyping && (
+             <div className="flex items-center justify-center text-slate-500 dark:text-slate-400">
+               <Loader2 size={16} className="animate-spin mr-2" />
+               <span>Generating explanation...</span>
+             </div>
+          )}
+          {isTyping && explanation ? (
+            <TypingAnimation
+              text={explanation}
+              speed={5} // Adjust speed as needed
+              onComplete={() => {
+                setIsTyping(false);
+                setIsExplaining(false); // Mark explanation as fully complete
+              }}
+            />
+          ) : explanation && !isTyping ? ( // Show full text once typing is done
+            formatText(explanation)
+          ) : !isExplaining && explainStatus !== 'loading' ? ( // Show summary if not explaining/loading
+            <div className="text-sm text-slate-700 dark:text-slate-300">
+              {summary}
+            </div>
+          ) : null}
+           {explainStatus === 'error' && (
+              <p className="text-sm text-red-600 dark:text-red-400 mt-2">{explanation}</p>
+          )}
+        </div>
+      )}
+
+      {/* Display existing note if there is one and not in note mode */}
+      {!isNoteMode && noteText && (
+        <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-md border border-yellow-200 dark:border-yellow-800">
+          <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">Your Note:</h4>
+          <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{noteText}</p>
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex flex-col space-y-2">
         <div className="flex space-x-2">
-          {/* Clip Button */}
-          <Button
-            onClick={handleClip}
-            disabled={isClipping || clipStatus === 'success'} // Disable while clipping or on success
-            className="flex-1 bg-royal-600 hover:bg-royal-700 text-white flex items-center justify-center gap-2 dark:bg-royal-700 dark:hover:bg-royal-800"
-          >
-            {clipStatus === 'idle' && <><Clipboard size={16} /><span>Clip To Memory</span></>}
-            {clipStatus === 'loading' && <><Loader2 size={16} className="animate-spin" /><span>Saving...</span></>}
-            {clipStatus === 'success' && <><CheckCircle size={16} /><span>Saved!</span></>}
-            {clipStatus === 'error' && <><XIcon size={16} /><span>Save Error</span></>}
-          </Button>
+          {!isNoteMode && (
+            <>
+              {/* Clip Button */}
+              <Button
+                onClick={handleClip}
+                disabled={isClipping || clipStatus === 'success'} // Disable while clipping or on success
+                className="flex-1 bg-royal-600 hover:bg-royal-700 text-white flex items-center justify-center gap-2 dark:bg-royal-700 dark:hover:bg-royal-800"
+              >
+                {clipStatus === 'idle' && <><Clipboard size={16} /><span>Clip To Memory</span></>}
+                {clipStatus === 'loading' && <><Loader2 size={16} className="animate-spin" /><span>Saving...</span></>}
+                {clipStatus === 'success' && <><CheckCircle size={16} /><span>Saved!</span></>}
+                {clipStatus === 'error' && <><XIcon size={16} /><span>Save Error</span></>}
+              </Button>
 
-          {/* Explain Button */}
-          <Button
-            onClick={handleExplainWithGemini}
-            disabled={isExplaining} // Disable only while explaining
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
-          >
-            {isExplaining ? (
-              <>
-                <Loader2 size={16} className="animate-spin" />
-                <span>Explaining...</span>
-              </>
-            ) : (
-              <>
-                <Lightbulb size={16} />
-                <span>Explain w/ Gemini</span>
-              </>
-            )}
-          </Button>
+              {/* Explain Button */}
+              <Button
+                onClick={handleExplainWithGemini}
+                disabled={isExplaining} // Disable only while explaining
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
+              >
+                {isExplaining ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Explaining...</span>
+                  </>
+                ) : (
+                  <>
+                    <Lightbulb size={16} />
+                    <span>Explain w/ Gemini</span>
+                  </>
+                )}
+              </Button>
+            </>
+          )}
         </div>
+        
+        {/* Take Note Button - Only show when not in note mode */}
+        {!isNoteMode && (
+          <Button
+            onClick={handleTakeNote}
+            className="bg-yellow-500 hover:bg-yellow-600 text-white w-full mt-2 flex items-center justify-center gap-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+            <span>Take Note</span>
+          </Button>
+        )}
       </div>
 
       {/* Styles */}
