@@ -32,30 +32,13 @@ try {
   // Ignore errors if directory already exists
 }
 
-// Initialize with sample data if the file doesn't exist
+// Initialize the file with an EMPTY array if it doesn't exist
 const initializeData = () => {
   if (!fs.existsSync(dataFilePath)) {
-    const initialData: MemoryItem[] = [
-      {
-        id: 'memory-1',
-        userId: 'demo-user',
-        paperId: 'paper-1',
-        text: 'The Transformer architecture has revolutionized natural language processing',
-        source: 'clip',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString()
-      },
-      {
-        id: 'memory-2',
-        userId: 'demo-user',
-        paperId: 'paper-2',
-        text: 'Graph neural networks can learn representations of molecular structures',
-        source: 'clip',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString()
-      }
-    ];
+    const initialData: MemoryItem[] = []; // Start with an empty array
     try {
         fs.writeFileSync(dataFilePath, JSON.stringify(initialData, null, 2));
-        console.log('Initialized memory-db.json');
+        console.log('Initialized EMPTY memory-db.json');
     } catch (writeError) {
         console.error('Error initializing memory-db.json:', writeError);
     }
