@@ -366,31 +366,29 @@ export default function MemoryPage() {
                         if (node) setSelectedNode(node);
                       }}
                     >
-                      <CardContent className="p-3 relative group">
-                        <p className={`text-sm line-clamp-2 ${selectedNode?.id === highlight.id ? 'text-royal-700' : 'text-gray-800'}`}>
+                      <CardContent className="p-3 relative">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute top-1 right-1 h-6 w-6 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full" 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click
+                            handleDeleteMemoryItem(highlight.id);
+                          }}
+                          title="Delete Memory Item"
+                        > 
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <p className={`text-sm line-clamp-2 pr-8 ${selectedNode?.id === highlight.id ? 'text-royal-700' : 'text-gray-800'}`}>
                           {highlight.text}
                         </p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-5 w-5 min-w-5 flex-shrink-0 bg-white text-red-500 hover:text-white hover:bg-red-500 border border-gray-200 rounded-full flex items-center justify-center shadow-sm transition-all opacity-80 group-hover:opacity-100" 
-                            onClick={(e) => {
-                              e.stopPropagation(); // Prevent card click
-                              handleDeleteMemoryItem(highlight.id);
-                            }}
-                            title="Delete Memory Item"
-                          > 
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                          <div className="flex-1 flex justify-between min-w-0">
-                            <span className="text-xs text-gray-500 truncate pr-2 flex-1" title={highlight.paperTitle}>
-                              {highlight.paperTitle || 'Unknown Paper'}
-                            </span>
-                            <span className="text-xs text-gray-400 flex-shrink-0">
-                              {new Date(highlight.date).toLocaleDateString()}
-                            </span>
-                          </div>
+                        <div className="mt-2 flex items-center justify-between">
+                          <span className="text-xs text-gray-500 truncate pr-2" title={highlight.paperTitle}>
+                            {highlight.paperTitle || 'Unknown Paper'}
+                          </span>
+                          <span className="text-xs text-gray-400 flex-shrink-0">
+                            {new Date(highlight.date).toLocaleDateString()}
+                          </span>
                         </div>
                       </CardContent>
                     </Card>
