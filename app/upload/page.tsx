@@ -1,9 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,7 @@ export default function UploadPage() {
   const [url, setUrl] = useState("")
   const [isUploading, setIsUploading] = useState(false)
   const { toast } = useToast()
+  const router = useRouter()
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -25,38 +26,64 @@ export default function UploadPage() {
 
   const handleFileUpload = async () => {
     if (!file) return
-
     setIsUploading(true)
-
-    // Simulate upload
-    setTimeout(() => {
-      setIsUploading(false)
+    try {
+      // Read file as text (for demo, real PDF parsing would be needed)
+      const fileContent = await file.text();
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileName: file.name, fileContent }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({
+          title: "Upload successful",
+          description: `${data.paper.title} has been uploaded and processed.`,
+        })
+        router.push(`/reader/${data.paper._id}`)
+      } else {
+        throw new Error(data.error || "Unknown error")
+      }
+    } catch (error) {
       toast({
-        title: "Upload successful",
-        description: `${file.name} has been uploaded and is being processed.`,
+        title: "Upload failed",
+        description: "There was an error processing your paper. Please try again.",
+        variant: "destructive",
       })
-
-      // Redirect to reader view (in a real app)
-      // router.push('/reader/123');
-    }, 2000)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const handleUrlSubmit = async () => {
     if (!url) return
-
     setIsUploading(true)
-
-    // Simulate processing
-    setTimeout(() => {
-      setIsUploading(false)
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast({
+          title: "Paper imported",
+          description: `${data.paper.title} has been imported and processed.`,
+        })
+        router.push(`/reader/${data.paper._id}`)
+      } else {
+        throw new Error(data.error || "Unknown error")
+      }
+    } catch (error) {
       toast({
-        title: "Paper imported",
-        description: "The paper has been imported and is being processed.",
+        title: "Import failed",
+        description: "There was an error importing the paper. Please check the URL and try again.",
+        variant: "destructive",
       })
-
-      // Redirect to reader view (in a real app)
-      // router.push('/reader/123');
-    }, 2000)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   return (
