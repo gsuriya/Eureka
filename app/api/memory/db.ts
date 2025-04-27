@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 // Define types for memory items
 export interface MemoryItem {
   id: string;
@@ -16,22 +19,30 @@ export interface MemoryItemData {
   source: string;
 }
 
-// This is a singleton mock database that persists across API requests
-// while the server is running
-class MockDatabase {
-  private static instance: MockDatabase;
-  public memory: MemoryItem[] = [];
+// Path to the JSON file for storing data
+// Use path.join to ensure cross-platform compatibility
+// Store it in a writable directory, e.g., inside `.next` or a dedicated `data` folder 
+// IMPORTANT: Avoid storing it directly in `app` or `pages` as it might trigger rebuilds
+const dataFilePath = path.join(process.cwd(), '.next', 'memory-db.json');
 
-  private constructor() {
-    // Add sample data
-    this.memory.push(
+// Ensure the directory exists
+try {
+  fs.mkdirSync(path.dirname(dataFilePath), { recursive: true });
+} catch (e) {
+  // Ignore errors if directory already exists
+}
+
+// Initialize with sample data if the file doesn't exist
+const initializeData = () => {
+  if (!fs.existsSync(dataFilePath)) {
+    const initialData: MemoryItem[] = [
       {
         id: 'memory-1',
         userId: 'demo-user',
         paperId: 'paper-1',
         text: 'The Transformer architecture has revolutionized natural language processing',
         source: 'clip',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString() // 2 days ago
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString()
       },
       {
         id: 'memory-2',
@@ -39,36 +50,66 @@ class MockDatabase {
         paperId: 'paper-2',
         text: 'Graph neural networks can learn representations of molecular structures',
         source: 'clip',
-        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() // 1 day ago
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString()
       }
-    );
-  }
-
-  public static getInstance(): MockDatabase {
-    if (!MockDatabase.instance) {
-      MockDatabase.instance = new MockDatabase();
+    ];
+    try {
+        fs.writeFileSync(dataFilePath, JSON.stringify(initialData, null, 2));
+        console.log('Initialized memory-db.json');
+    } catch (writeError) {
+        console.error('Error initializing memory-db.json:', writeError);
     }
-    return MockDatabase.instance;
   }
+};
 
-  public createMemoryItem(data: MemoryItemData): MemoryItem {
+initializeData();
+
+// Helper function to read data from the file
+const readData = (): MemoryItem[] => {
+  try {
+    if (!fs.existsSync(dataFilePath)) {
+        initializeData(); // Initialize if file missing
+    }
+    const jsonData = fs.readFileSync(dataFilePath, 'utf-8');
+    return JSON.parse(jsonData) as MemoryItem[];
+  } catch (error) {
+    console.error('Error reading memory data:', error);
+    return []; // Return empty array on error
+  }
+};
+
+// Helper function to write data to the file
+const writeData = (data: MemoryItem[]) => {
+  try {
+    fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('Error writing memory data:', error);
+  }
+};
+
+// Database object using file storage
+export const mockDb = {
+  createMemoryItem: (data: MemoryItemData): MemoryItem => {
+    const currentData = readData();
     const id = `memory-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
-    const newItem = { 
+    const newItem: MemoryItem = { 
       id, 
       ...data, 
       createdAt: new Date().toISOString() 
     };
-    this.memory.push(newItem);
-    console.log(`Added memory item: ${newItem.id}`, newItem);
+    currentData.push(newItem);
+    writeData(currentData);
+    console.log(`Added memory item to file: ${newItem.id}`, newItem);
     return newItem;
-  }
+  },
 
-  public listMemoryItems(filter?: { userId?: string }): MemoryItem[] {
-    console.log(`Listing memory items. Total: ${this.memory.length}`);
+  listMemoryItems: (filter?: { userId?: string }): MemoryItem[] => {
+    const currentData = readData();
+    console.log(`Listing memory items from file. Total: ${currentData.length}`);
     
-    let result = this.memory;
+    let result = currentData;
     if (filter?.userId) {
-      result = this.memory.filter(item => item.userId === filter.userId);
+      result = currentData.filter(item => item.userId === filter.userId);
       console.log(`Filtered for user ${filter.userId}, found: ${result.length}`);
     }
     
@@ -77,7 +118,4 @@ class MockDatabase {
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   }
-}
-
-// Export the singleton instance
-export const mockDb = MockDatabase.getInstance(); 
+}; 

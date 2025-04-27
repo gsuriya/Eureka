@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { use } from 'react'
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -27,10 +26,10 @@ import { PaperTabs } from "@/components/paper-tabs"
 import { PDFViewer } from "@/components/pdf-viewer"
 import { useRouter } from "next/navigation"
 
-// Mock paper data
+// Mock paper data - Ensure it matches PaperType (using _id)
 const paperData = {
   "1": {
-    id: "1",
+    _id: "1", // Use _id to match PaperType
     title: "Attention Is All You Need",
     authors:
       "Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser, Illia Polosukhin",
@@ -53,7 +52,7 @@ const paperData = {
     ],
   },
   "2": {
-    id: "2",
+    _id: "2", // Use _id to match PaperType
     title: "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
     authors: "Jacob Devlin, Ming-Wei Chang, Kenton Lee, Kristina Toutanova",
     abstract:
@@ -75,7 +74,7 @@ const paperData = {
     ],
   },
   "3": {
-    id: "3",
+    _id: "3", // Use _id to match PaperType
     title: "GPT-3: Language Models are Few-Shot Learners",
     authors:
       "Tom B. Brown, Benjamin Mann, Nick Ryder, Melanie Subbiah, Jared Kaplan, Prafulla Dhariwal, Arvind Neelakantan, Pranav Shyam, Girish Sastry, Amanda Askell, Sandhini Agarwal, Ariel Herbert-Voss, Gretchen Krueger, Tom Henighan, Rewon Child, Aditya Ramesh, Daniel M. Ziegler, Jeffrey Wu, Clemens Winter, Christopher Hesse, Mark Chen, Eric Sigler, Mateusz Litwin, Scott Gray, Benjamin Chess, Jack Clark, Christopher Berner, Sam McCandlish, Alec Radford, Ilya Sutskever, Dario Amodei",
@@ -99,236 +98,123 @@ const paperData = {
   },
 }
 
-// Mock open papers
+// Mock open papers (adjust if needed based on _id)
 const initialOpenPapers = [
-  { id: "1", title: "Attention Is All You Need" },
+  { id: "1", title: "Attention Is All You Need" }, // Keep using id here if PaperTabs expects it
   { id: "2", title: "BERT: Pre-training of Deep Bidirectional Transformers" },
 ]
 
+// Define type for paper state
+interface PaperType {
+  _id: string;
+  title: string;
+  authors: string[] | string;
+  abstract?: string;
+  year?: string;
+  venue?: string;
+  url?: string;
+  filePath?: string;
+  sections?: any[]; // Or a more specific type
+  originalName?: string;
+}
+
 export default function ReaderPage({ params }: { params: { id: string } }) {
-  // Unwrap params using React.use
-  const unwrappedParams = use(params);
-  const paperId = unwrappedParams.id;
+  // Revert back to direct access - the warning is acceptable for now
+  const paperIdFromUrl = params.id; 
   
-  const [paper, setPaper] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [selectedText, setSelectedText] = useState("")
-  const [aiExplanation, setAiExplanation] = useState("")
-  const [showExplanation, setShowExplanation] = useState(false)
-  const [savedHighlights, setSavedHighlights] = useState<string[]>([])
-  const [showSidebar, setShowSidebar] = useState(true)
-  const [activePaperId, setActivePaperId] = useState(paperId || "1")
+  const [paper, setPaper] = useState<PaperType | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [activePaperId, setActivePaperId] = useState(paperIdFromUrl || "")
   const [openPapers, setOpenPapers] = useState<Array<{ id: string; title: string }>>([])
 
-  const selectionRef = useRef<{ x: number; y: number } | null>(null)
   const { toast } = useToast()
   const router = useRouter()
 
   // Fetch paper data from API
   useEffect(() => {
-    const fetchPaper = async () => {
+    const fetchPaper = async (idToFetch: string) => {
+      if (!idToFetch) {
+         setLoading(false);
+         setPaper(null);
+         setActivePaperId("");
+         toast({ title: 'Error', description: 'No paper ID provided.', variant: 'destructive' });
+         return;
+      }
+      
       try {
-        setLoading(true)
-        const response = await fetch(`/api/papers/${paperId}`)
+        setLoading(true);
+        const response = await fetch(`/api/papers/${idToFetch}`);
         if (!response.ok) {
-          throw new Error('Failed to fetch paper')
+          throw new Error('Failed to fetch paper');
         }
-        const data = await response.json()
-        setPaper(data.paper)
+        const data = await response.json();
+        
+        if (!data.paper) {
+          throw new Error('Paper data not found in response');
+        }
+        
+        const fetchedPaper: PaperType = data.paper;
+        setPaper(fetchedPaper);
+        
+        // Use the actual ID from the fetched paper
+        const actualPaperId = fetchedPaper._id.toString();
+        setActivePaperId(actualPaperId);
         
         // Add to open papers if not already there
         setOpenPapers(prev => {
-          if (!prev.some(p => p.id === data.paper._id.toString())) {
-            return [...prev, { id: data.paper._id.toString(), title: data.paper.title }]
+          if (!prev.some(p => p.id === actualPaperId)) {
+            return [...prev, { id: actualPaperId, title: fetchedPaper.title }]
           }
-          return prev
-        })
-        
-        setActivePaperId(data.paper._id)
-      } catch (error) {
-        console.error('Error fetching paper:', error)
-        toast({
-          title: 'Error',
-          description: 'Failed to load paper. Please try again.',
-          variant: 'destructive',
-        })
-        // Use mock data as fallback
-        const mockPaper = paperData[paperId as keyof typeof paperData]
-        if (mockPaper) {
-          setPaper(mockPaper)
-          setOpenPapers(initialOpenPapers)
-        }
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (paperId) {
-      fetchPaper()
-    }
-  }, [paperId, toast])
-
-  // Function to handle text selection and create highlights
-  const handleTextSelection = (currentPage: number) => {
-    const selection = window.getSelection();
-    if (!selection || selection.isCollapsed) return;
-
-    try {
-      // Get the selected text
-      const text = selection.toString().trim();
-      if (!text) return;
-
-      // Get the bounding client rect of the selection
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      
-      if (!rect.width || !rect.height) return;
-
-      // Get page element
-      const pageElement = pageRefs.current[currentPage - 1];
-      if (!pageElement) {
-        console.error("Page element reference not available");
-        return;
-      }
-
-      // Get the page's position
-      const pageRect = pageElement.getBoundingClientRect();
-      
-      // Calculate position relative to the page
-      const relativeRect = {
-        x1: rect.left - pageRect.left,
-        y1: rect.top - pageRect.top,
-        x2: rect.right - pageRect.left,
-        y2: rect.bottom - pageRect.top,
-        width: rect.width,
-        height: rect.height,
-      };
-
-      // Check for overlapping highlights
-      const hasOverlap = highlights.some(h => {
-        if (h.page !== currentPage) return false;
-        
-        // Basic overlap detection
-        const r1 = h.position.boundingRect;
-        const r2 = relativeRect;
-        
-        return !(
-          r1.x1 > r2.x2 || // r1 is to the right of r2
-          r1.x2 < r2.x1 || // r1 is to the left of r2
-          r1.y1 > r2.y2 || // r1 is below r2
-          r1.y2 < r2.y1    // r1 is above r2
-        );
-      });
-
-      if (hasOverlap) {
-        console.log("Highlight overlaps with existing highlight, skipping");
-        return;
-      }
-
-      // Create a highlight object
-      const highlight: Highlight = {
-        page: currentPage,
-        position: {
-          boundingRect: relativeRect,
-          text,
-        },
-      };
-
-      // Get document context for better summaries
-      let context = "";
-      try {
-        const textLayerElements = pageElement.querySelectorAll(".react-pdf__Page__textContent");
-        if (textLayerElements.length > 0) {
-          const texts = Array.from(textLayerElements)
-            .map(el => el.textContent || "")
-            .filter(text => text.trim().length > 0);
-          context = texts.join(" ");
-        }
-      } catch (error) {
-        console.error("Error extracting context from page:", error);
-      }
-
-      // Calculate popup position relative to the highlight within the page
-      const popupX = relativeRect.x2 + 10; // 10px to the right of highlight
-      const popupY = relativeRect.y1; // Aligned with top of highlight
-      
-      // Check if popup would go off-screen and adjust if needed
-      const pageWidth = pageRect.width;
-      const popupWidth = 400; // Width of popup including margins
-      
-      // If popup would go beyond page edge, position left of highlight
-      const adjustedX = popupX + popupWidth > pageWidth
-        ? Math.max(10, relativeRect.x1 - popupWidth - 10)
-        : popupX;
-
-      // Add the highlight and immediately show popup
-      setHighlights(prev => {
-        const newHighlights = [...prev, highlight];
-        
-        // After adding the highlight, show popup immediately
-        setPopup({
-          visible: true,
-          highlight: {
-            ...highlight,
-            context: context || undefined
-          },
-          position: {
-            x: adjustedX,
-            y: popupY
-          }
+          return prev;
         });
         
-        return newHighlights;
-      });
-      
-      console.log("Created highlight:", highlight);
-      
-      // Clear the selection
-      selection.removeAllRanges();
-    } catch (error) {
-      console.error("Error creating highlight:", error);
-    }
-  };
+      } catch (error) {
+        console.error('Error fetching paper:', error);
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        toast({
+          title: 'Error',
+          description: `Failed to load paper (${errorMsg}). Trying mock data.`,
+          variant: 'destructive',
+        });
+        // Use mock data as fallback
+        const mockPaper = paperData[idToFetch as keyof typeof paperData];
+        if (mockPaper) {
+          setPaper(mockPaper as PaperType); // Assert type when using mock data
+          setActivePaperId(idToFetch); 
+          if(openPapers.length === 0) setOpenPapers(initialOpenPapers);
+        } else {
+          setActivePaperId("");
+          setPaper(null);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const saveHighlight = () => {
-    if (selectedText && !savedHighlights.includes(selectedText)) {
-      setSavedHighlights([...savedHighlights, selectedText])
-      toast({
-        title: "Highlight saved",
-        description: "Added to your long-term memory.",
-      })
-    }
-  }
+    fetchPaper(paperIdFromUrl); // Fetch using ID from URL
+    
+  }, [paperIdFromUrl, toast]); // Depend only on URL ID and toast
 
   const handlePaperSelect = (id: string) => {
-    // If paper is already open, just activate it
-    if (openPapers.some((paper) => paper.id === id)) {
-      setActivePaperId(id)
-    } else {
-      // Otherwise, add it to open papers and activate it
-      const paperToAdd = {
-        id,
-        title: paperData[id as keyof typeof paperData]?.title || "Unknown Paper",
-      }
-      setOpenPapers([...openPapers, paperToAdd])
-      setActivePaperId(id)
-    }
-  }
+    // Navigate or set active ID - this seems okay
+    router.push(`/reader/${id}`);
+  };
 
   const handleTabChange = (id: string) => {
-    setActivePaperId(id)
-  }
+    // Navigate or set active ID
+     router.push(`/reader/${id}`);
+  };
 
   const handleTabClose = (id: string) => {
-    // Remove the paper from open papers
-    const newOpenPapers = openPapers.filter((paper) => paper.id !== id)
-    setOpenPapers(newOpenPapers)
-
-    // If we're closing the active paper, activate another one
+    const newOpenPapers = openPapers.filter((paper) => paper.id !== id);
+    setOpenPapers(newOpenPapers);
     if (id === activePaperId && newOpenPapers.length > 0) {
-      setActivePaperId(newOpenPapers[0].id)
+      router.push(`/reader/${newOpenPapers[0].id}`);
+    } else if (newOpenPapers.length === 0) {
+       router.push('/'); // Go home if no papers left
     }
-  }
+  };
 
   // Effect to handle sidebar on resize
   useEffect(() => {
@@ -357,7 +243,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
   }
 
   // Show not found state
-  if (!paper) {
+  if (!loading && !paper) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
@@ -370,6 +256,9 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
       </div>
     )
   }
+
+  // Ensure paper is not null before rendering
+  if (!paper) return null; 
 
   // Display the PDF if filePath exists
   return (
@@ -420,7 +309,6 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
           isOpen={showSidebar}
           onClose={() => setShowSidebar(false)}
           activePaperId={activePaperId}
-          onPaperSelect={handlePaperSelect}
         />
 
         {/* Main Content */}
@@ -454,12 +342,13 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
                 )}
               </div>
 
-              {/* PDF Viewer for uploaded PDFs - full width container */}
+              {/* PDF Viewer for uploaded PDFs - pass correct paperId */}
               {paper.filePath && (
                 <div className="mb-8 w-full">
                   <PDFViewer 
                     url={paper.filePath} 
-                    fileName={paper.originalName || paper.title} 
+                    fileName={paper.originalName || paper.title}
+                    paperId={activePaperId}
                   />
                 </div>
               )}
@@ -476,7 +365,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
 
               {/* Paper Content - only show for mock data or extracted content */}
               {paper.sections && paper.sections.length > 0 && (
-                <div className="space-y-8" onMouseUp={() => handleTextSelection(currentPage)}>
+                <div className="space-y-8">
                   {paper.sections.map((section: any, index: number) => (
                     <div key={index} className="space-y-4">
                       <h2 className="text-xl font-semibold text-gray-800">{section.title}</h2>
@@ -491,59 +380,6 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
           </main>
         </div>
       </div>
-
-      {/* Selection Popover */}
-      {selectedText && selectionRef.current && (
-        <div
-          className="fixed z-50 bg-white shadow-lg rounded-lg p-2 flex gap-2"
-          style={{
-            left: `${selectionRef.current.x}px`,
-            top: `${selectionRef.current.y + 10}px`,
-            transform: "translateX(-50%)",
-          }}
-        >
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={saveHighlight}>
-                  <Save className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Clip to Memory</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setShowExplanation(!showExplanation)}>
-                  <Sparkles className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Explain with AI</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      )}
-
-      {/* AI Explanation Card */}
-      {showExplanation && aiExplanation && (
-        <div className="fixed bottom-4 right-4 z-50 max-w-md">
-          <Card className="p-4 shadow-lg border border-royal-100">
-            <div className="flex justify-between items-start mb-2">
-              <div className="flex items-center">
-                <Sparkles className="h-4 w-4 mr-2 text-royal-500" />
-                <h3 className="font-medium">AI Explanation</h3>
-              </div>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowExplanation(false)}>
-                <span className="sr-only">Close</span>
-                <span>×</span>
-              </Button>
-            </div>
-            <p className="text-sm">{aiExplanation}</p>
-          </Card>
-        </div>
-      )}
     </div>
   )
 }
