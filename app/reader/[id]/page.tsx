@@ -25,6 +25,7 @@ import { PapersSidebar } from "@/components/papers-sidebar"
 import { PaperTabs } from "@/components/paper-tabs"
 import { PDFViewer } from "@/components/pdf-viewer"
 import { useRouter } from "next/navigation"
+import { use } from "react"
 
 // Mock paper data - Ensure it matches PaperType (using _id)
 const paperData = {
@@ -119,8 +120,9 @@ interface PaperType {
 }
 
 export default function ReaderPage({ params }: { params: { id: string } }) {
-  // Revert back to direct access - the warning is acceptable for now
-  const paperIdFromUrl = params.id; 
+  // Use React.use() to unwrap params as recommended by Next.js
+  const unwrappedParams = use(params as any) as { id: string };
+  const paperIdFromUrl = unwrappedParams.id;
   
   const [paper, setPaper] = useState<PaperType | null>(null);
   const [loading, setLoading] = useState(true);
