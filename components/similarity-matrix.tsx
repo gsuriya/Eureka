@@ -30,9 +30,10 @@ interface SimilarityData {
 
 interface SimilarityMatrixProps {
   refreshTrigger?: number; // To force refresh when nodes change
+  currentThreshold?: number; // Current similarity threshold from parent
 }
 
-export default function SimilarityMatrix({ refreshTrigger }: SimilarityMatrixProps) {
+export default function SimilarityMatrix({ refreshTrigger, currentThreshold = 0.5 }: SimilarityMatrixProps) {
   const [similarityData, setSimilarityData] = useState<SimilarityData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +43,12 @@ export default function SimilarityMatrix({ refreshTrigger }: SimilarityMatrixPro
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/memory/analyze');
+      const response = await fetch('/api/memory/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ threshold: currentThreshold })
+      });
+      
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -59,7 +65,7 @@ export default function SimilarityMatrix({ refreshTrigger }: SimilarityMatrixPro
 
   useEffect(() => {
     fetchSimilarityData();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, currentThreshold]);
 
   const getSimilarityColor = (similarity: number, threshold: number) => {
     if (similarity >= threshold) {

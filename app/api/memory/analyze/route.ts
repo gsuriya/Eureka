@@ -1,24 +1,31 @@
 import { NextResponse } from 'next/server';
 import { mockDb, calculateCosineSimilarity } from '../db';
 
-export async function GET(req: Request) {
-  try {
-    console.log('=== ANALYZING ALL CURRENT SIMILARITIES ===');
-    
-    const userId = "demo-user";
-    const allItems = mockDb.listMemoryItems({ userId });
-    
-    console.log(`Found ${allItems.length} memory items to analyze`);
-    
-    if (allItems.length < 2) {
-      return NextResponse.json({
-        message: 'Need at least 2 items to analyze similarities',
-        itemCount: allItems.length
-      });
-    }
+async function analyzeWithThreshold(customThreshold?: number) {
+  console.log('=== ANALYZING ALL CURRENT SIMILARITIES ===');
+  console.log(`Using threshold: ${customThreshold || 0.5} (${((customThreshold || 0.5) * 100).toFixed(1)}%)`);
+  
+  const userId = "demo-user";
+  const allItems = mockDb.listMemoryItems({ userId });
+  
+  console.log(`Found ${allItems.length} memory items to analyze`);
+  
+  if (allItems.length < 2) {
+    return {
+      analyses: [],
+      summary: {
+        totalPairs: 0,
+        connectedPairs: 0,
+        threshold: customThreshold || 0.5,
+        thresholdPercent: ((customThreshold || 0.5) * 100).toFixed(1),
+        highestSimilarity: 0,
+        lowestSimilarity: 0
+      }
+    };
+  }
 
-    const analyses: any[] = [];
-    const threshold = 0.5;
+  const analyses: any[] = [];
+  const threshold = customThreshold || 0.5;
 
     // Compare all pairs
     for (let i = 0; i < allItems.length; i++) {
@@ -58,7 +65,7 @@ export async function GET(req: Request) {
     console.log(`Lowest similarity: ${analyses[analyses.length - 1]?.similarityPercent}%`);
     console.log('=== END ANALYSIS ===\n');
 
-    return NextResponse.json({
+    return {
       analyses,
       summary: {
         totalPairs: analyses.length,
@@ -68,10 +75,32 @@ export async function GET(req: Request) {
         highestSimilarity: analyses[0]?.similarity || 0,
         lowestSimilarity: analyses[analyses.length - 1]?.similarity || 0
       }
-    });
+    };
+}
 
+export async function GET(req: Request) {
+  try {
+    const result = await analyzeWithThreshold();
+    return NextResponse.json(result);
   } catch (error: any) {
-    console.error('[MEMORY_ANALYZE]', error);
+    console.error('[MEMORY_ANALYZE_GET]', error);
+    return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { threshold } = body;
+    
+    if (threshold !== undefined && (threshold < 0 || threshold > 1)) {
+      return new NextResponse('Threshold must be between 0 and 1', { status: 400 });
+    }
+    
+    const result = await analyzeWithThreshold(threshold);
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error('[MEMORY_ANALYZE_POST]', error);
     return new NextResponse(`Internal Server Error: ${error.message}`, { status: 500 });
   }
 } 

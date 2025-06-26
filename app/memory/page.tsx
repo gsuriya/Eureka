@@ -5,6 +5,7 @@ import NextLink from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Slider } from "@/components/ui/slider"
 import { BookOpen, Brain, ArrowLeft, Loader2, RefreshCw } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { useToast } from "@/hooks/use-toast"
@@ -33,9 +34,11 @@ export default function MemoryPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [similarityThreshold, setSimilarityThreshold] = useState(0.5) // 50% default
+  const [updatingThreshold, setUpdatingThreshold] = useState(false)
 
   // Fetch graph data from API
-  const fetchGraphData = useCallback(async () => {
+  const fetchGraphData = useCallback(async (customThreshold?: number) => {
     try {
       console.log('Fetching graph data...')
       const response = await fetch('/api/memory/list')
@@ -58,6 +61,30 @@ export default function MemoryPage() {
       
       console.log(`Validated data: ${nodes.length} nodes, ${edges.length} edges`)
       
+      // If we have a custom threshold, recalculate edges
+      if (customThreshold !== undefined && nodes.length > 1) {
+        console.log(`Recalculating edges with threshold: ${customThreshold}`)
+        try {
+          const recalcResponse = await fetch('/api/memory/recalculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ threshold: customThreshold })
+          })
+          
+          if (recalcResponse.ok) {
+            const recalcData = await recalcResponse.json()
+            if (recalcData.graphData) {
+              setGraphData(recalcData.graphData)
+              setRefreshTrigger(prev => prev + 1)
+              return
+            }
+          }
+        } catch (recalcError) {
+          console.error('Error recalculating with custom threshold:', recalcError)
+          // Fall back to original data
+        }
+      }
+      
       setGraphData({ nodes, edges })
       setRefreshTrigger(prev => prev + 1) // Trigger similarity matrix refresh
     } catch (error) {
@@ -76,17 +103,36 @@ export default function MemoryPage() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true)
-      await fetchGraphData()
+      await fetchGraphData(similarityThreshold)
       setLoading(false)
     }
     
     loadData()
-  }, [fetchGraphData])
+  }, [fetchGraphData, similarityThreshold])
+
+  // Handle threshold change
+  const handleThresholdChange = async (newThreshold: number[]) => {
+    const threshold = newThreshold[0]
+    setSimilarityThreshold(threshold)
+    setUpdatingThreshold(true)
+    
+    console.log(`Threshold changed to: ${threshold} (${(threshold * 100).toFixed(0)}%)`)
+    
+    // Debounce the API call to avoid too many requests
+    setTimeout(async () => {
+      await fetchGraphData(threshold)
+      setUpdatingThreshold(false)
+      toast({
+        title: "Threshold Updated",
+        description: `Similarity threshold set to ${(threshold * 100).toFixed(0)}%`
+      })
+    }, 300)
+  }
 
   // Handle manual refresh
   const handleRefresh = async () => {
     setRefreshing(true)
-    await fetchGraphData()
+    await fetchGraphData(similarityThreshold)
     setRefreshing(false)
     toast({
       title: "Refreshed",
@@ -143,13 +189,13 @@ export default function MemoryPage() {
   // Set up real-time updates (polling every 30 seconds)
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!loading && !refreshing) {
-        fetchGraphData()
+      if (!loading && !refreshing && !updatingThreshold) {
+        fetchGraphData(similarityThreshold)
       }
     }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
-  }, [fetchGraphData, loading, refreshing])
+  }, [fetchGraphData, loading, refreshing, updatingThreshold, similarityThreshold])
 
   if (loading) {
     return (
@@ -251,17 +297,57 @@ export default function MemoryPage() {
                 <div className="lg:col-span-2">
                   <Card className="bg-white shadow-sm">
                     <CardContent className="p-6">
-                      <div className="mb-4 flex items-center justify-between">
-                        <div>
-                          <h2 className="text-lg font-semibold text-royal-700">
-                            Knowledge Graph
-                          </h2>
-                          <p className="text-sm text-gray-600">
-                            Nodes represent clipped sentences. Connections show semantic similarity {'>'}50%.
-                          </p>
+                      <div className="mb-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h2 className="text-lg font-semibold text-royal-700">
+                              Knowledge Graph
+                            </h2>
+                            <p className="text-sm text-gray-600">
+                              Nodes represent clipped sentences. Connections show semantic similarity {'>'}{(similarityThreshold * 100).toFixed(0)}%.
+                            </p>
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Last updated: {new Date().toLocaleTimeString()}
+                          </div>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          Last updated: {new Date().toLocaleTimeString()}
+                        
+                        {/* Similarity Threshold Slider */}
+                        <div className="bg-royal-50 border border-royal-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <label className="text-sm font-medium text-royal-700">
+                                Similarity Threshold
+                              </label>
+                              <p className="text-xs text-royal-600">
+                                Adjust to show more or fewer connections
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-bold text-royal-700">
+                                {(similarityThreshold * 100).toFixed(0)}%
+                              </span>
+                              {updatingThreshold && (
+                                <RefreshCw className="h-4 w-4 animate-spin text-royal-500" />
+                              )}
+                            </div>
+                          </div>
+                          
+                          <Slider
+                            value={[similarityThreshold]}
+                            onValueChange={handleThresholdChange}
+                            min={0.1}
+                            max={0.9}
+                            step={0.05}
+                            className="w-full"
+                            disabled={updatingThreshold}
+                          />
+                          
+                          <div className="flex justify-between text-xs text-royal-600 mt-1">
+                            <span>10% (More connections)</span>
+                            <span>50% (Balanced)</span>
+                            <span>90% (Fewer connections)</span>
+                          </div>
                         </div>
                       </div>
                       
@@ -277,7 +363,10 @@ export default function MemoryPage() {
 
                 {/* Similarity Matrix */}
                 <div className="lg:col-span-1">
-                  <SimilarityMatrix refreshTrigger={refreshTrigger} />
+                  <SimilarityMatrix 
+                    refreshTrigger={refreshTrigger} 
+                    currentThreshold={similarityThreshold}
+                  />
                 </div>
               </div>
             )}
@@ -291,8 +380,8 @@ export default function MemoryPage() {
                   <li>• <strong>Hover over nodes</strong> to see the full sentence text</li>
                   <li>• <strong>Click nodes</strong> to see details and navigate to the source paper</li>
                   <li>• <strong>Search</strong> to highlight matching nodes in green</li>
-                  <li>• <strong>Connections</strong> are automatically created when similarity {'>'}50%</li>
-                  <li>• <strong>Debug panel</strong> on the right shows all similarity scores for troubleshooting</li>
+                  <li>• <strong>Adjust threshold</strong> with the slider to control connection sensitivity</li>
+                  <li>• <strong>Debug panel</strong> on the right shows all similarity scores in real-time</li>
                 </ul>
               </CardContent>
             </Card>
