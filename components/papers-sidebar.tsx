@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Search, X, FileText, BookOpen, Upload, Plus, Trash2 } from "lucide-react"
+import { Search, X, FileText, BookOpen, Upload, Plus, Trash2, Brain } from "lucide-react"
 
 interface PapersSidebarProps {
   isOpen: boolean
@@ -26,6 +26,7 @@ export function PapersSidebar({ isOpen, onClose, activePaperId }: PapersSidebarP
   const [papers, setPapers] = useState<PaperData[]>([]) // State to hold fetched papers
   const [loading, setLoading] = useState(true) // Loading state
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [quizLoading, setQuizLoading] = useState(false) // Quiz generation loading state
   const router = useRouter() // Initialize router
 
   // Fetch papers on component mount
@@ -202,14 +203,37 @@ export function PapersSidebar({ isOpen, onClose, activePaperId }: PapersSidebarP
         </ScrollArea>
 
         {/* Actions */}
-        <div className="p-4 border-t">
+        <div className="p-4 border-t space-y-3">
+          {/* Quiz Button - only show if there's an active paper */}
+          {activePaperId && (
+            <Link href={`/quiz/${activePaperId}`}>
+              <Button 
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-sans font-medium gap-2"
+                disabled={quizLoading}
+                onClick={() => setQuizLoading(true)}
+              >
+                {quizLoading ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Generating Quiz...
+                  </>
+                ) : (
+                  <>
+                    <Brain className="h-4 w-4" />
+                    Take Quiz
+                  </>
+                )}
+              </Button>
+            </Link>
+          )}
+          
           <Link href="/upload">
             <Button className="w-full bg-royal-500 hover:bg-royal-600 text-white font-sans font-medium gap-2">
               <Upload className="h-4 w-4" />
               Upload New Paper
             </Button>
           </Link>
-          <div className="mt-2 text-center">
+          <div className="text-center">
             <Link
               href="/memory"
               className="text-sm text-royal-500 hover:text-royal-600 font-sans flex items-center justify-center gap-1"
