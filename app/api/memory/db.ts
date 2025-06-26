@@ -34,14 +34,12 @@ try {
 
 // Initialize the file with an EMPTY array if it doesn't exist
 const initializeData = () => {
-  if (!fs.existsSync(dataFilePath)) {
-    const initialData: MemoryItem[] = []; // Start with an empty array
-    try {
-        fs.writeFileSync(dataFilePath, JSON.stringify(initialData, null, 2));
-        console.log('Initialized EMPTY memory-db.json');
-    } catch (writeError) {
-        console.error('Error initializing memory-db.json:', writeError);
-    }
+  const initialData: MemoryItem[] = []; // Always start with an empty array
+  try {
+      fs.writeFileSync(dataFilePath, JSON.stringify(initialData, null, 2));
+      console.log('Initialized EMPTY memory-db.json');
+  } catch (writeError) {
+      console.error('Error initializing memory-db.json:', writeError);
   }
 };
 
