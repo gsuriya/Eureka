@@ -9,6 +9,10 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@suriya/sdk": "^0.2.0",
+    "@osdk/client": "^2.2.0",
+    "@osdk/oauth": "^1.0.0",
+    "@osdk/foundry": "latest",
     "@google/generative-ai": "^0.2.0",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.2",

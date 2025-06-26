@@ -19,6 +19,7 @@ export default function LandingPage() {
             <Link href="/upload" className="font-sans font-medium text-royal-500 hover:text-royal-600">Upload</Link>
             <Link href="/reader" className="font-sans font-medium text-royal-500 hover:text-royal-600">Reader</Link>
             <Link href="/memory" className="font-sans font-medium text-royal-500 hover:text-royal-600">Memory</Link>
+            <Link href="/palantir" className="font-sans font-medium text-royal-500 hover:text-royal-600">Palantir</Link>
           </nav>
           <div className="flex items-center gap-4">
             <Button variant="outline" size="sm" className="font-sans font-medium text-royal-500 border-royal-200 rounded-lg shadow-sm hover:shadow bg-white">Log in</Button>
