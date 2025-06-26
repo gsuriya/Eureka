@@ -598,43 +598,6 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
               }
               return prev;
             });
-
-            // ALSO CLIP TO SEMANTIC MEMORY SYSTEM
-            try {
-              console.log(`DEBUG: Clipping text to semantic memory system...`);
-              const memoryResponse = await fetch('/api/memory/clip', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  paperId: paperId,
-                  text: highlight.text || highlight.position.text,
-                  paperTitle: 'Research Paper' // You could get this from the document title
-                }),
-              });
-
-              if (!memoryResponse.ok) {
-                throw new Error(`Memory API error: ${memoryResponse.status}`);
-              }
-
-              const memoryData = await memoryResponse.json();
-              console.log(`DEBUG: Memory clip successful:`, memoryData);
-              
-              if (memoryData.newEdges && memoryData.newEdges.length > 0) {
-                toast({
-                  title: 'Connected!',
-                  description: `Found ${memoryData.newEdges.length} semantic connection(s) to other clips.`,
-                });
-              } else if (memoryData.hasEmbedding) {
-                toast({
-                  title: 'Clipped to Memory',
-                  description: 'Text added to your semantic knowledge graph.',
-                });
-              }
-            } catch (memoryError) {
-              console.error('Error clipping to memory:', memoryError);
-              // Don't show error toast - highlight still worked, just memory failed
-              console.warn('Memory clipping failed, but highlight was saved successfully');
-            }
           }
         } catch (error) {
           console.error("Error saving highlight:", error);
