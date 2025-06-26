@@ -9,6 +9,7 @@ import { BookOpen, Brain, ArrowLeft, Loader2, RefreshCw } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { useToast } from "@/hooks/use-toast"
 import SemanticGraph, { type GraphData, type GraphNode } from "@/components/semantic-graph"
+import SimilarityMatrix from "@/components/similarity-matrix"
 
 interface MemoryItem {
   id: string;
@@ -31,6 +32,7 @@ export default function MemoryPage() {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], edges: [] })
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   // Fetch graph data from API
   const fetchGraphData = useCallback(async () => {
@@ -57,6 +59,7 @@ export default function MemoryPage() {
       console.log(`Validated data: ${nodes.length} nodes, ${edges.length} edges`)
       
       setGraphData({ nodes, edges })
+      setRefreshTrigger(prev => prev + 1) // Trigger similarity matrix refresh
     } catch (error) {
       console.error('Error fetching graph data:', error)
       toast({
@@ -117,6 +120,9 @@ export default function MemoryPage() {
         title: "Deleted",
         description: "Memory item removed from graph"
       })
+
+      // Trigger similarity matrix refresh
+      setRefreshTrigger(prev => prev + 1)
 
     } catch (error: any) {
       console.error('Error deleting node:', error)
@@ -240,30 +246,40 @@ export default function MemoryPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="bg-white shadow-sm">
-                <CardContent className="p-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-royal-700">
-                        Knowledge Graph
-                      </h2>
-                                             <p className="text-sm text-gray-600">
-                         Nodes represent clipped sentences. Connections show semantic similarity {'>'}75%.
-                       </p>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      Last updated: {new Date().toLocaleTimeString()}
-                    </div>
-                  </div>
-                  
-                  <SemanticGraph
-                    graphData={graphData}
-                    onNodeClick={handleNodeClick}
-                    onNodeDelete={handleNodeDelete}
-                    height="700px"
-                  />
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Main Graph */}
+                <div className="lg:col-span-2">
+                  <Card className="bg-white shadow-sm">
+                    <CardContent className="p-6">
+                      <div className="mb-4 flex items-center justify-between">
+                        <div>
+                          <h2 className="text-lg font-semibold text-royal-700">
+                            Knowledge Graph
+                          </h2>
+                          <p className="text-sm text-gray-600">
+                            Nodes represent clipped sentences. Connections show semantic similarity {'>'}50%.
+                          </p>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Last updated: {new Date().toLocaleTimeString()}
+                        </div>
+                      </div>
+                      
+                      <SemanticGraph
+                        graphData={graphData}
+                        onNodeClick={handleNodeClick}
+                        onNodeDelete={handleNodeDelete}
+                        height="700px"
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Similarity Matrix */}
+                <div className="lg:col-span-1">
+                  <SimilarityMatrix refreshTrigger={refreshTrigger} />
+                </div>
+              </div>
             )}
 
             {/* Instructions */}
@@ -275,7 +291,8 @@ export default function MemoryPage() {
                   <li>• <strong>Hover over nodes</strong> to see the full sentence text</li>
                   <li>• <strong>Click nodes</strong> to see details and navigate to the source paper</li>
                   <li>• <strong>Search</strong> to highlight matching nodes in green</li>
-                                     <li>• <strong>Connections</strong> are automatically created when similarity {'>'}75%</li>
+                  <li>• <strong>Connections</strong> are automatically created when similarity {'>'}50%</li>
+                  <li>• <strong>Debug panel</strong> on the right shows all similarity scores for troubleshooting</li>
                 </ul>
               </CardContent>
             </Card>
