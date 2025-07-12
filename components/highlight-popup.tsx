@@ -93,16 +93,13 @@ interface HighlightPopupProps {
   onDelete?: (highlight: Highlight) => void
   onSaveNote?: (noteText: string) => void
   isNoteMode?: boolean
+  onAddToCopilotChat?: (text: string) => void
 }
 
-export default function HighlightPopup({ highlight, paperId, onClose, position, onDelete, onSaveNote, isNoteMode: initialNoteMode = false }: HighlightPopupProps) {
+export default function HighlightPopup({ highlight, paperId, onClose, position, onDelete, onSaveNote, isNoteMode: initialNoteMode = false, onAddToCopilotChat }: HighlightPopupProps) {
   const [clipStatus, setClipStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [isClipping, setIsClipping] = useState<boolean>(false);
-  const [explainStatus, setExplainStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [isExplaining, setIsExplaining] = useState<boolean>(false);
-  const [summary, setSummary] = useState<string>('Generating explanation...'); // Keep local summary
-  const [explanation, setExplanation] = useState<string>('');
-  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const [summary, setSummary] = useState<string>('Text selected. Ready to chat about it!'); // Keep local summary
   const [isNoteMode, setIsNoteMode] = useState<boolean>(initialNoteMode);
   const [noteText, setNoteText] = useState<string>('');
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
@@ -146,11 +143,7 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
       setNoteText(highlight.note);
     }
     
-    // Reset explanation state when highlight changes
-    setExplanation('');
-    setIsTyping(false);
-    setExplainStatus('idle');
-    setIsExplaining(false);
+    // Reset note mode when highlight changes
     setIsNoteMode(false);
 
   }, [highlight]); // Depend only on highlight
@@ -225,54 +218,18 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
     }
   };
 
-  const handleExplainWithGemini = async () => {
-    if (isExplaining) return; // Prevent multiple clicks
 
-    setIsExplaining(true);
-    setExplainStatus('loading');
-    setExplanation(''); // Clear previous explanation
-    setIsTyping(false);
 
-    try {
-      const selectedText = highlight.text || highlight.position.text;
-      if (!selectedText) {
-        throw new Error('No text selected to explain');
-      }
+  const handleAddToCopilotChat = () => {
+    const selectedText = highlight.text || highlight.position.text;
+    if (!selectedText) {
+      console.error('No text selected to add to chat');
+      return;
+    }
 
-      const context = highlight.context || '';
-      const prompt = `Explain this text simply, using Markdown for formatting (headings #, ##; lists -):\n\nText: "${selectedText}"\n\nContext: ${context}`;
-
-      console.log('Sending to Gemini API:', { prompt });
-
-      const response = await fetch('/api/gemini/explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API error: ${errorText}`);
-      }
-
-      const data = await response.json();
-      const fullExplanation = data.explanation || 'Failed to generate explanation.';
-
-      console.log("Received explanation:", fullExplanation);
-      setExplanation(fullExplanation); // Set the full explanation
-      setIsTyping(true); // Start typing animation
-      setExplainStatus('success');
-
-    } catch (error) {
-      console.error('Error getting explanation from Gemini:', error);
-      setExplanation('Sorry, I could not generate an explanation.');
-      setExplainStatus('error');
-      setIsTyping(false);
-    } finally {
-      // Keep loading state until typing is complete or error occurs
-       if (!isTyping && explanation === '') { // Only reset if typing didn't start (error)
-         setIsExplaining(false);
-       }
+    if (onAddToCopilotChat) {
+      onAddToCopilotChat(selectedText);
+      onClose(); // Close the popup when adding to chat
     }
   };
 
@@ -358,12 +315,12 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
   return (
     <Card
       ref={popupRef}
-      className={`absolute z-50 bg-white dark:bg-slate-800 shadow-lg rounded-lg p-4 border border-slate-200 dark:border-slate-700 transition-all duration-300 ${isNoteMode ? 'w-[500px] max-w-[90vw]' : explanation ? 'w-[500px] max-w-[90vw]' : 'w-96'}`}
+      className={`absolute z-50 bg-white dark:bg-slate-800 shadow-lg rounded-lg p-4 border border-slate-200 dark:border-slate-700 transition-all duration-300 ${isNoteMode ? 'w-[500px] max-w-[90vw]' : 'w-96'}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        maxHeight: isNoteMode || explanation ? '70vh' : 'auto',
-        overflowY: isNoteMode || explanation ? 'auto' : 'visible'
+        maxHeight: isNoteMode ? '70vh' : 'auto',
+        overflowY: isNoteMode ? 'auto' : 'visible'
       }}
     >
       <div className="flex justify-between items-center mb-3">
@@ -397,7 +354,7 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
               className="p-1 h-7 w-7 hover:bg-red-100 hover:text-red-600"
               title="Delete highlight"
               onClick={handleDelete}
-              disabled={isClipping || isExplaining || isNoteMode} // Disable while other actions are in progress
+              disabled={isClipping || isNoteMode} // Disable while other actions are in progress
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -454,33 +411,11 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
           </div>
         </div>
       ) : (
-        /* Explanation Area - Only show when not in note mode */
-        <div className="mb-4 prose prose-sm dark:prose-invert max-w-none min-h-[3rem]"> {/* Added min-height */}
-          {isExplaining && explainStatus === 'loading' && !isTyping && (
-             <div className="flex items-center justify-center text-slate-500 dark:text-slate-400">
-               <Loader2 size={16} className="animate-spin mr-2" />
-               <span>Generating explanation...</span>
-             </div>
-          )}
-          {isTyping && explanation ? (
-            <TypingAnimation
-              text={explanation}
-              speed={5} // Adjust speed as needed
-              onComplete={() => {
-                setIsTyping(false);
-                setIsExplaining(false); // Mark explanation as fully complete
-              }}
-            />
-          ) : explanation && !isTyping ? ( // Show full text once typing is done
-            formatText(explanation)
-          ) : !isExplaining && explainStatus !== 'loading' ? ( // Show summary if not explaining/loading
-            <div className="text-sm text-slate-700 dark:text-slate-300">
-              {summary}
-            </div>
-          ) : null}
-           {explainStatus === 'error' && (
-              <p className="text-sm text-red-600 dark:text-red-400 mt-2">{explanation}</p>
-          )}
+        /* Summary Area - Only show when not in note mode */
+        <div className="mb-4 min-h-[3rem]">
+          <div className="text-sm text-slate-700 dark:text-slate-300">
+            {summary}
+          </div>
         </div>
       )}
 
@@ -506,26 +441,18 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
                 {clipStatus === 'idle' && <><Clipboard size={16} /><span>Clip To Memory</span></>}
                 {clipStatus === 'loading' && <><Loader2 size={16} className="animate-spin" /><span>Saving...</span></>}
                 {clipStatus === 'success' && <><CheckCircle size={16} /><span>Saved!</span></>}
-                {clipStatus === 'error' && <><XIcon size={16} /><span>Save Error</span></>}
+                                {clipStatus === 'error' && <><XIcon size={16} /><span>Save Error</span></>}
               </Button>
 
-              {/* Explain Button */}
+              {/* Add to Copilot Chat Button */}
               <Button
-                onClick={handleExplainWithGemini}
-                disabled={isExplaining} // Disable only while explaining
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2"
+                onClick={handleAddToCopilotChat}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
               >
-                {isExplaining ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>Explaining...</span>
-                  </>
-                ) : (
-                  <>
-                    <Lightbulb size={16} />
-                    <span>Explain w/ Gemini</span>
-                  </>
-                )}
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <span>Add to Copilot Chat</span>
               </Button>
             </>
           )}

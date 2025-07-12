@@ -19,6 +19,7 @@ import {
   Save,
   Share,
   Sparkles,
+  MessageCircle,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { PapersSidebar } from "@/components/papers-sidebar"
@@ -26,6 +27,12 @@ import { PaperTabs } from "@/components/paper-tabs"
 import { PDFViewer } from "@/components/pdf-viewer"
 import { useRouter } from "next/navigation"
 import { use } from "react"
+import dynamic from "next/dynamic"
+
+// Dynamically import CopilotChat
+const CopilotChat = dynamic(() => import('@/components/copilot-chat'), {
+  ssr: false,
+})
 
 // Mock paper data - Ensure it matches PaperType (using _id)
 const paperData = {
@@ -129,6 +136,8 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
   const [showSidebar, setShowSidebar] = useState(true);
   const [activePaperId, setActivePaperId] = useState(paperIdFromUrl || "")
   const [openPapers, setOpenPapers] = useState<Array<{ id: string; title: string }>>([])
+  const [copilotChatOpen, setCopilotChatOpen] = useState(false)
+  const [copilotAutoPrompt, setCopilotAutoPrompt] = useState<string>('')
 
   const { toast } = useToast()
   const router = useRouter()
@@ -216,6 +225,12 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
     } else if (newOpenPapers.length === 0) {
        router.push('/'); // Go home if no papers left
     }
+  };
+
+  const handleAddToCopilotChat = (text: string) => {
+    // Set the auto-prompt text and open copilot chat
+    setCopilotAutoPrompt(text);
+    setCopilotChatOpen(true);
   };
 
   // Effect to handle sidebar on resize
@@ -351,6 +366,7 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
                     url={paper.filePath} 
                     fileName={paper.originalName || paper.title}
                     paperId={activePaperId}
+                    onAddToCopilotChat={handleAddToCopilotChat}
                   />
                 </div>
               )}
@@ -382,6 +398,28 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
           </main>
         </div>
       </div>
+
+      {/* Floating Copilot Chat Button */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          onClick={() => setCopilotChatOpen(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200"
+          size="lg"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </Button>
+      </div>
+
+      {/* Copilot Chat */}
+      <CopilotChat
+        isOpen={copilotChatOpen}
+        onClose={() => {
+          setCopilotChatOpen(false);
+          setCopilotAutoPrompt(''); // Clear auto-prompt when closing
+        }}
+        paperId={activePaperId}
+        autoPrompt={copilotAutoPrompt}
+      />
     </div>
   )
 }

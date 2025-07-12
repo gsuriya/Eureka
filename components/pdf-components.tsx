@@ -23,6 +23,7 @@ interface PDFComponentsProps {
   scale: number
   showAllPages?: boolean
   paperId?: string
+  onAddToCopilotChat?: (text: string) => void
 }
 
 interface Highlight {
@@ -68,7 +69,7 @@ const NoteBubble = ({
   pageNum
 }: { 
   highlight: Highlight; 
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   pageRef: HTMLDivElement; // Changed to mandatory HTMLDivElement
   onEdit: () => void;
   onDelete: () => void;
@@ -220,7 +221,7 @@ const NoteBubble = ({
   );
 };
 
-export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, scale, showAllPages = false, paperId = '' }: PDFComponentsProps) {
+export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, scale, showAllPages = false, paperId = '', onAddToCopilotChat }: PDFComponentsProps) {
   // Basic state
   const [error, setError] = useState<string | null>(null);
   const [fileUrl, setFileUrl] = useState<string>(file);
@@ -236,6 +237,8 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     position: { x: 0, y: 0 },
     mode: 'view'
   });
+  
+
   
   // Debouncing to prevent duplicate text selections
   const [isProcessingSelection, setIsProcessingSelection] = useState(false);
@@ -811,6 +814,8 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
     });
   };
 
+
+
   // Handle when a page successfully loads
   const handlePageLoadSuccess = (pageNum: number) => {
     console.log(`DEBUG: Page ${pageNum} loaded successfully`);
@@ -901,7 +906,7 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
             data-popup-page={pageNum}
             data-popup-mode={popup.mode}
           >
-            <HighlightPopup
+                        <HighlightPopup
               highlight={{
                 ...popup.highlight,
                 text: popup.highlight.text || popup.highlight.position.text || "",
@@ -912,6 +917,7 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
               onDelete={handleDeleteHighlight}
               onSaveNote={(noteText) => handleSaveNote(popup.highlight!, noteText)}
               isNoteMode={popup.mode === 'note'}
+              onAddToCopilotChat={onAddToCopilotChat}
             />
           </div>
         )}
@@ -990,6 +996,8 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
           </div>
         )}
       </div>
+
+
     </>
   );
 }

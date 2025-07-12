@@ -19,9 +19,10 @@ interface PDFViewerProps {
   url: string
   fileName?: string
   paperId?: string
+  onAddToCopilotChat?: (text: string) => void
 }
 
-export function PDFViewer({ url, fileName, paperId }: PDFViewerProps) {
+export function PDFViewer({ url, fileName, paperId, onAddToCopilotChat }: PDFViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null)
   const [scale, setScale] = useState(2.0)
 
@@ -46,6 +47,7 @@ export function PDFViewer({ url, fileName, paperId }: PDFViewerProps) {
             scale={scale}
             showAllPages={true}
             paperId={paperId}
+            onAddToCopilotChat={onAddToCopilotChat}
           />
         </div>
       </div>
