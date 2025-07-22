@@ -1,5 +1,7 @@
 # 📚 Paper Trail - Unified Research Assistant Platform
 
+> **🔑 API Keys:** All required API keys are available in [this Google Document](https://docs.google.com/document/d/1DzZcqGjN_NJsjl3xaIGBRNQGrNu-QtRITqXf159lnZA/edit?usp=sharing). Access using Suriya's stern email.
+
 A complete research assistant platform that combines paper reading, AI-powered analysis, video generation, and knowledge graph management in one integrated system.
 
 ## 🎯 Features
