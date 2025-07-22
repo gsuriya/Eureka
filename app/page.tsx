@@ -1,29 +1,25 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, BookOpen, Upload, Sparkles, BookMarked, Network } from "lucide-react"
+import { ArrowRight, BookOpen, Upload, Sparkles, BookMarked, Network, Search } from "lucide-react"
 
 export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen bg-ivory">
       {/* Header */}
       <header className="border-b shadow-sm bg-white">
-        <div className="container flex h-16 items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-2">
+        <div className="container flex h-16 items-center px-4 md:px-6">
+          <Link href="/" className="flex items-center gap-2">
             <div className="bg-royal-500 p-1.5 rounded-lg flex items-center">
               <BookOpen className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-sans font-bold text-royal-500">Eureka</span>
-          </div>
-          <nav className="hidden md:flex gap-6">
-            <Link href="/" className="font-sans font-bold text-royal-700 underline underline-offset-4">Home</Link>
-            <Link href="/upload" className="font-sans font-medium text-royal-500 hover:text-royal-600">Upload</Link>
+            <span className="text-xl font-sans font-bold text-royal-500">PaperTrail</span>
+          </Link>
+          <nav className="hidden md:flex gap-6 absolute left-1/2 transform -translate-x-1/2">
             <Link href="/reader" className="font-sans font-medium text-royal-500 hover:text-royal-600">Reader</Link>
+            <Link href="/search" className="font-sans font-medium text-royal-500 hover:text-royal-600">Search</Link>
+            <Link href="/library" className="font-sans font-medium text-royal-500 hover:text-royal-600">Library</Link>
             <Link href="/memory" className="font-sans font-medium text-royal-500 hover:text-royal-600">Memory</Link>
           </nav>
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" className="font-sans font-medium text-royal-500 border-royal-200 rounded-lg shadow-sm hover:shadow bg-white">Log in</Button>
-            <Button size="sm" className="font-sans font-bold bg-royal-500 hover:bg-royal-600 text-white rounded-lg shadow-md hover:shadow-lg transition-all">Sign up</Button>
-          </div>
         </div>
       </header>
 
@@ -42,12 +38,12 @@ export default function LandingPage() {
                   Cursor for <span className="italic">Research</span> Papers
                 </h1>
                 <p className="max-w-[600px] text-white/80 md:text-xl">
-                  Eureka helps you read, understand, and connect research papers with AI-powered insights and an
+                  PaperTrail helps you read, understand, and connect research papers with AI-powered insights and an
                   intelligent memory system designed for academic professionals.
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row mt-4">
-                <Link href="/upload">
+                <Link href="/reader">
                   <Button
                     size="lg"
                     className="bg-white text-royal-500 hover:bg-white/90 shadow-lg hover:shadow-xl transition-all"
@@ -59,7 +55,7 @@ export default function LandingPage() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="border-white/30 text-white hover:bg-white/10 backdrop-blur-sm"
+                    className="border-white text-white hover:bg-white/20 hover:text-white backdrop-blur-sm bg-white/10"
                   >
                     Learn More
                   </Button>
@@ -117,7 +113,7 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3 lg:gap-12 mt-12">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4 lg:gap-12 mt-12">
             {/* Feature 1 */}
             <div className="flex flex-col items-center space-y-4 text-center rounded-xl p-6 border bg-white shadow-elegant">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-royal-500 shadow-md">
@@ -132,7 +128,7 @@ export default function LandingPage() {
               </div>
               <div className="pt-4 mt-auto">
                 <Link
-                  href="/upload"
+                  href="/reader"
                   className="text-royal-500 hover:text-royal-600 text-sm font-medium flex items-center"
                 >
                   Try it now <ArrowRight className="h-3 w-3 ml-1" />
@@ -140,6 +136,27 @@ export default function LandingPage() {
               </div>
             </div>
             {/* Feature 2 */}
+            <div className="flex flex-col items-center space-y-4 text-center rounded-xl p-6 border bg-white shadow-elegant">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-royal-500 shadow-md">
+                <Search className="h-8 w-8 text-white" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-royal-500">Smart Discovery</h3>
+                <p className="text-gray-600">
+                  Transform research questions into comprehensive paper discovery with AI-powered search and relevance
+                  ranking.
+                </p>
+              </div>
+              <div className="pt-4 mt-auto">
+                <Link
+                  href="/search"
+                  className="text-royal-500 hover:text-royal-600 text-sm font-medium flex items-center"
+                >
+                  Discover papers <ArrowRight className="h-3 w-3 ml-1" />
+                </Link>
+              </div>
+            </div>
+            {/* Feature 3 */}
             <div className="flex flex-col items-center space-y-4 text-center rounded-xl p-6 border bg-white shadow-elegant">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-royal-500 shadow-md">
                 <BookMarked className="h-8 w-8 text-white" />
@@ -160,7 +177,7 @@ export default function LandingPage() {
                 </Link>
               </div>
             </div>
-            {/* Feature 3 */}
+            {/* Feature 4 */}
             <div className="flex flex-col items-center space-y-4 text-center rounded-xl p-6 border bg-white shadow-elegant">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-royal-500 shadow-md">
                 <Network className="h-8 w-8 text-white" />
@@ -197,7 +214,7 @@ export default function LandingPage() {
                 Trusted by Academic Professionals
               </h2>
               <p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                See what researchers are saying about Eureka
+                See what researchers are saying about PaperTrail
               </p>
             </div>
           </div>
@@ -215,7 +232,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className="text-gray-600 italic">
-                "Eureka has transformed how I approach literature reviews. The knowledge graph feature helps me
+                                    "PaperTrail has transformed how I approach literature reviews. The knowledge graph feature helps me
                 discover connections I would have otherwise missed."
               </p>
             </div>
@@ -249,7 +266,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <p className="text-gray-600 italic">
-                "Eureka's memory system has become an essential part of my research workflow. It's like having a
+                                    "PaperTrail's memory system has become an essential part of my research workflow. It's like having a
                 second brain for academic literature."
               </p>
             </div>
@@ -267,11 +284,11 @@ export default function LandingPage() {
                 Ready to Transform Your Research?
               </h2>
               <p className="max-w-[600px] mx-auto text-white/80 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Join thousands of researchers who are using Eureka to enhance their understanding and connections.
+                Join thousands of researchers who are using PaperTrail to enhance their understanding and connections.
               </p>
             </div>
             <div className="flex flex-col gap-3 min-[400px]:flex-row">
-              <Link href="/upload">
+              <Link href="/reader">
                 <Button
                   size="lg"
                   className="bg-white text-royal-500 hover:bg-white/90 shadow-lg hover:shadow-xl transition-all"
@@ -282,7 +299,7 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 backdrop-blur-sm"
+                className="border-white text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm"
               >
                 Schedule a Demo
               </Button>
@@ -301,7 +318,7 @@ export default function LandingPage() {
                 <div className="bg-royal-500 p-1.5 rounded-lg">
                   <BookOpen className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-bold text-royal-500">Eureka</span>
+                <span className="font-bold text-royal-500">PaperTrail</span>
               </div>
               <p className="text-sm text-gray-600 mb-4">
                 Transform your research experience with AI-powered insights and an intelligent memory system.
@@ -412,7 +429,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-gray-200 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-600">© 2024 Eureka. All rights reserved.</p>
+            <p className="text-sm text-gray-600">© 2024 PaperTrail. All rights reserved.</p>
             <div className="flex gap-4 mt-4 md:mt-0">
               <Link href="#" className="text-sm text-gray-600 hover:text-royal-500 transition-colors">
                 Terms

@@ -88,7 +88,7 @@ export function PapersSidebar({ isOpen, onClose, activePaperId }: PapersSidebarP
           }
         } else {
           // If no papers left, go to an empty reader state
-          router.push('/reader/empty');
+          router.push('/reader');
         }
       } else {
         // If the deleted paper is not the active one, just update state
@@ -227,7 +227,7 @@ export function PapersSidebar({ isOpen, onClose, activePaperId }: PapersSidebarP
             </Link>
           )}
           
-          <Link href="/upload">
+          <Link href="/reader">
             <Button className="w-full bg-royal-500 hover:bg-royal-600 text-white font-sans font-medium gap-2">
               <Upload className="h-4 w-4" />
               Upload New Paper

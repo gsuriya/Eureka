@@ -19,11 +19,13 @@ if (typeof window !== 'undefined') {
 interface PDFComponentsProps {
   file: string
   onLoadSuccess: ({ numPages }: { numPages: number }) => void
+  onLoadError?: (error: Error) => void
   pageNumber?: number
   scale: number
   showAllPages?: boolean
   paperId?: string
   onAddToCopilotChat?: (text: string) => void
+  onCurrentPageChange?: (pageNumber: number) => void
 }
 
 interface Highlight {
@@ -221,7 +223,7 @@ const NoteBubble = ({
   );
 };
 
-export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, scale, showAllPages = false, paperId = '', onAddToCopilotChat }: PDFComponentsProps) {
+export default function PDFComponents({ file, onLoadSuccess, onLoadError, pageNumber = 1, scale, showAllPages = false, paperId = '', onAddToCopilotChat, onCurrentPageChange }: PDFComponentsProps) {
   // Basic state
   const [error, setError] = useState<string | null>(null);
   const [fileUrl, setFileUrl] = useState<string>(file);
@@ -293,6 +295,11 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
       
       if (newVisiblePages.length > 0) {
         setVisiblePages(newVisiblePages);
+        // Call the callback with the first visible page (or minimum page number)
+        if (onCurrentPageChange) {
+          const currentPage = Math.min(...newVisiblePages);
+          onCurrentPageChange(currentPage);
+        }
       }
     }, {
       root: null,
@@ -346,6 +353,10 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
   const handleError = (err: Error) => {
     console.error("PDF Error:", err);
     setError(err.message);
+    // Call the error callback if provided
+    if (onLoadError) {
+      onLoadError(err);
+    }
   };
 
   // Handle PDF load success
@@ -855,8 +866,8 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
           renderAnnotationLayer={false}
           className="shadow-xl"
           loading={
-            <div className="flex justify-center items-center h-[60vh]">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-royal-500"></div>
+            <div className="flex justify-center items-center h-[200px]">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-royal-500"></div>
             </div>
           }
           onLoadSuccess={() => handlePageLoadSuccess(pageNum)}
@@ -936,16 +947,16 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
       )}
 
       {/* Main container for PDF and absolutely positioned notes */}
-      <div className="relative w-full flex items-start justify-center" ref={containerRef}>
+      <div className="relative w-full h-full overflow-auto" ref={containerRef}>
         {/* PDF Document Rendering Area */}
-        <div className="pdf-document-area flex-shrink-0">
+        <div className="pdf-document-area flex-shrink-0 flex justify-center">
           <Document
             file={fileUrl}
             onLoadSuccess={handleDocumentLoadSuccess}
             onLoadError={handleError}
             loading={
-              <div className="flex justify-center items-center h-[80vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-royal-500"></div>
+              <div className="flex justify-center items-center h-[20vh]">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-royal-500"></div>
               </div>
             }
             error={
@@ -959,7 +970,7 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
             }
             className="w-full"
           >
-            <div className="relative w-full flex flex-col items-center">
+            <div className="relative flex flex-col items-center">
               {showAllPages
                 ? Array.from(new Array(numPages), (_, index) => renderPage(index + 1))
                 : renderPage(pageNumber)
@@ -987,14 +998,7 @@ export default function PDFComponents({ file, onLoadSuccess, pageNumber = 1, sca
             }
         </div>
 
-        {/* Display current page indicator when scrolling */}
-        {showAllPages && visiblePages.length > 0 && (
-          <div className="fixed bottom-4 right-4 bg-slate-800 text-white px-3 py-2 rounded-full shadow-lg opacity-80 pointer-events-auto">
-            <p className="text-sm font-medium">
-              Page {Math.min(...visiblePages)} of {numPages}
-            </p>
-          </div>
-        )}
+
       </div>
 
 

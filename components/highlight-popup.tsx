@@ -1,10 +1,13 @@
 "use client"
 
 import React, { useState, useEffect, useRef } from 'react'
-import { XIcon, Clipboard, CheckCircle, Loader2, Lightbulb, Trash2, Share2 } from 'lucide-react'
+import { XIcon, Clipboard, CheckCircle, Loader2, Lightbulb, Trash2, Share2, ChevronDown, Database, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from '@/components/ui/use-toast'
+import { useMemoryGraphSession } from '@/hooks/use-memory-graph-session'
+import MemoryGraphSelectionModal from '@/components/memory-graph-selection-modal'
 
 // Define Highlight interface here instead of importing it
 interface Highlight {
@@ -25,6 +28,15 @@ interface Highlight {
   summary?: string;
   context?: string;
   note?: string;
+}
+
+// Memory graph interface
+interface MemoryGraph {
+  id: string;
+  name: string;
+  userId: string;
+  createdAt: string;
+  isDefault?: boolean;
 }
 
 // Helper function to format markdown-like text into HTML elements
@@ -103,12 +115,29 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
   const [isNoteMode, setIsNoteMode] = useState<boolean>(initialNoteMode);
   const [noteText, setNoteText] = useState<string>('');
   const [isSavingNote, setIsSavingNote] = useState<boolean>(false);
+  const [memoryGraphs, setMemoryGraphs] = useState<MemoryGraph[]>([]);
+  const [loadingGraphs, setLoadingGraphs] = useState<boolean>(false);
+  const [showGraphModal, setShowGraphModal] = useState<boolean>(false);
   const popupRef = useRef<HTMLDivElement>(null);
+
+  // Use the session-based graph selection hook
+  const { sessionGraphId, setSessionGraphId, clearSessionGraphId, isSessionActive } = useMemoryGraphSession();
+  
+  // Compute session graph from the loaded graphs
+  const sessionGraph = memoryGraphs.find(g => g.id === sessionGraphId);
 
   // Close popup on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        // Don't close if clicking on a dropdown/select content
+        const target = event.target as Element;
+        if (target.closest('[data-radix-popper-content-wrapper]') || 
+            target.closest('[role="listbox"]') ||
+            target.closest('[data-state="open"]') ||
+            target.closest('.select-content')) {
+          return;
+        }
         onClose();
       }
     }
@@ -117,6 +146,26 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
       document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [onClose]);
+
+  // Load memory graphs for display purposes
+  useEffect(() => {
+    const fetchGraphs = async () => {
+      setLoadingGraphs(true);
+      try {
+        const response = await fetch('/api/memory/graphs');
+        if (response.ok) {
+          const graphs = await response.json();
+          setMemoryGraphs(graphs);
+        }
+      } catch (error) {
+        console.error('Error fetching memory graphs:', error);
+      } finally {
+        setLoadingGraphs(false);
+      }
+    };
+
+    fetchGraphs();
+  }, []);
 
   // Initialize summary and note based on highlight prop
   useEffect(() => {
@@ -146,7 +195,7 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
     // Reset note mode when highlight changes
     setIsNoteMode(false);
 
-  }, [highlight]); // Depend only on highlight
+  }, [highlight]);
 
   // Update isNoteMode when initialNoteMode prop changes
   useEffect(() => {
@@ -156,31 +205,28 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
   const handleClip = async () => {
     if (isClipping) return; // Prevent multiple clicks
 
+    console.log('handleClip called - isSessionActive:', isSessionActive, 'sessionGraphId:', sessionGraphId);
+
+    // If no session graph is selected, show the graph selection modal
+    if (!isSessionActive) {
+      console.log('No session active, showing graph selection modal');
+      setShowGraphModal(true);
+      return;
+    }
+
+    console.log('Session active, performing clip with graph:', sessionGraphId);
+    await performClip(sessionGraphId!);
+  };
+
+  const performClip = async (graphId: string) => {
     setIsClipping(true);
     setClipStatus('loading');
     
-    // Debug logging to identify the issue
-    console.log('Debug - Clipping with:', {
-      paperId,
-      highlightText: highlight.text,
-      positionText: highlight.position?.text,
-      highlight: highlight
-    });
-    
-    console.log('Clipping highlight to memory, paper ID:', paperId);
+    console.log('Clipping highlight to memory, paper ID:', paperId, 'graph ID:', graphId);
 
     try {
       const textToClip = highlight.text || highlight.position.text;
       
-      // More detailed debug
-      console.log('Clip check values:', {
-        hasPaperId: !!paperId,
-        hasTextToClip: !!textToClip,
-        paperId,
-        textToClipLength: textToClip?.length
-      });
-      
-      // Only require text, use a fallback ID if paperId is missing
       if (!textToClip) {
         throw new Error('Missing text for memory clip.');
       }
@@ -191,16 +237,25 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
       const response = await fetch('/api/memory/clip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paperId: paperIdToUse, text: textToClip }),
+        body: JSON.stringify({ 
+          paperId: paperIdToUse, 
+          text: textToClip,
+          graphId: graphId
+        }),
       });
+      
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`Failed to clip to memory: ${errorText}`);
       }
+      
+      const result = await response.json();
       setClipStatus('success');
+      
+      const selectedGraph = memoryGraphs.find(g => g.id === graphId);
       toast({
         title: 'Success',
-        description: 'Highlight clipped to Memory!',
+        description: `Highlight clipped to "${selectedGraph?.name || 'Memory'}" graph!`,
       });
     } catch (error) {
       console.error('Error clipping highlight:', error);
@@ -218,7 +273,18 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
     }
   };
 
+  const handleGraphSelected = async (graphId: string) => {
+    // Set the session graph
+    setSessionGraphId(graphId);
+    setShowGraphModal(false);
+    
+    // Perform the clip with the selected graph
+    await performClip(graphId);
+  };
 
+  const handleChangeGraph = () => {
+    setShowGraphModal(true);
+  };
 
   const handleAddToCopilotChat = () => {
     const selectedText = highlight.text || highlight.position.text;
@@ -313,189 +379,234 @@ export default function HighlightPopup({ highlight, paperId, onClose, position, 
   };
 
   return (
-    <Card
-      ref={popupRef}
-      className={`absolute z-50 bg-white dark:bg-slate-800 shadow-lg rounded-lg p-4 border border-slate-200 dark:border-slate-700 transition-all duration-300 ${isNoteMode ? 'w-[500px] max-w-[90vw]' : 'w-96'}`}
-      style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        maxHeight: isNoteMode ? '70vh' : 'auto',
-        overflowY: isNoteMode ? 'auto' : 'visible'
-      }}
-    >
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="text-md font-medium text-slate-900 dark:text-slate-100 flex items-center">
-          {isNoteMode ? (
-            <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="text-yellow-500 mr-2 h-5 w-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path>
-                <path d="m15 9-6 6"></path>
-                <path d="m9 9 6 6"></path>
-              </svg>
-              Add Your Note
-            </>
-          ) : (
-            <>
-              <Lightbulb className="text-amber-500 mr-2 h-5 w-5" />
-              Understanding This Concept
-            </>
-          )}
-        </h3>
-        <div className="flex gap-2">
-          {/* Share Button (Functionality TBD) */}
-          <Button size="sm" variant="ghost" className="p-1 h-7 w-7" title="Share highlight">
-            <Share2 className="h-4 w-4" />
-          </Button>
-          {/* Delete Button */}
-          {onDelete && ( // Only render if onDelete prop is provided
-            <Button
-              size="sm"
-              variant="ghost"
-              className="p-1 h-7 w-7 hover:bg-red-100 hover:text-red-600"
-              title="Delete highlight"
-              onClick={handleDelete}
-              disabled={isClipping || isNoteMode} // Disable while other actions are in progress
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            aria-label="Close"
-          >
-            <XIcon size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Highlighted Text */}
-      <div className="mb-3 text-sm text-slate-800 dark:text-slate-200 max-h-24 overflow-y-auto bg-slate-100 dark:bg-slate-700 p-2 rounded border border-slate-200 dark:border-slate-600 italic">
-        "{highlight.text || highlight.position.text || "Selected text"}"
-      </div>
-
-      {/* Note Taking UI */}
-      {isNoteMode ? (
-        <div className="mb-4">
-          <textarea
-            className="w-full h-32 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-md shadow-inner text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
-            placeholder="Type your notes here..."
-            value={noteText}
-            onChange={(e) => setNoteText(e.target.value)}
-          />
-          <div className="flex justify-end space-x-2 mt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCancelNote}
-              className="border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-300"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSaveNote}
-              disabled={isSavingNote}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white dark:bg-yellow-600 dark:hover:bg-yellow-700"
-            >
-              {isSavingNote ? (
-                <>
-                  <Loader2 size={16} className="animate-spin mr-1" />
-                  Saving...
-                </>
-              ) : (
-                "Save Note"
-              )}
-            </Button>
-          </div>
-        </div>
-      ) : (
-        /* Summary Area - Only show when not in note mode */
-        <div className="mb-4 min-h-[3rem]">
-          <div className="text-sm text-slate-700 dark:text-slate-300">
-            {summary}
-          </div>
-        </div>
-      )}
-
-      {/* Display existing note if there is one and not in note mode */}
-      {!isNoteMode && noteText && (
-        <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/30 p-3 rounded-md border border-yellow-200 dark:border-yellow-800">
-          <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-1">Your Note:</h4>
-          <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{noteText}</p>
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex flex-col space-y-2">
-        <div className="flex space-x-2">
-          {!isNoteMode && (
-            <>
-              {/* Clip Button */}
-              <Button
-                onClick={handleClip}
-                disabled={isClipping || clipStatus === 'success'} // Disable while clipping or on success
-                className="flex-1 bg-royal-600 hover:bg-royal-700 text-white flex items-center justify-center gap-2 dark:bg-royal-700 dark:hover:bg-royal-800"
-              >
-                {clipStatus === 'idle' && <><Clipboard size={16} /><span>Clip To Memory</span></>}
-                {clipStatus === 'loading' && <><Loader2 size={16} className="animate-spin" /><span>Saving...</span></>}
-                {clipStatus === 'success' && <><CheckCircle size={16} /><span>Saved!</span></>}
-                                {clipStatus === 'error' && <><XIcon size={16} /><span>Save Error</span></>}
-              </Button>
-
-              {/* Add to Copilot Chat Button */}
-              <Button
-                onClick={handleAddToCopilotChat}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    <>
+      <Card
+        ref={popupRef}
+        className={`absolute z-50 bg-white shadow-lg rounded-lg p-4 border border-slate-200 transition-all duration-300 ${isNoteMode ? 'w-[500px] max-w-[90vw]' : 'w-96'}`}
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          maxHeight: isNoteMode ? '70vh' : 'auto',
+          overflowY: isNoteMode ? 'auto' : 'visible'
+        }}
+      >
+        <div className="flex justify-between items-center mb-3">
+          <h3 className="text-md font-medium text-slate-900 flex items-center">
+            {isNoteMode ? (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="text-yellow-500 mr-2 h-5 w-5" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z"></path>
+                  <path d="m15 9-6 6"></path>
+                  <path d="m9 9 6 6"></path>
                 </svg>
-                <span>Add to Copilot Chat</span>
+                Add Your Note
+              </>
+            ) : (
+              <>
+                <Lightbulb className="text-amber-500 mr-2 h-5 w-5" />
+                Understanding This Concept
+              </>
+            )}
+          </h3>
+          <div className="flex gap-2">
+            {/* Share Button (Functionality TBD) */}
+            <Button size="sm" variant="ghost" className="p-1 h-7 w-7" title="Share highlight">
+              <Share2 className="h-4 w-4" />
+            </Button>
+            {/* Delete Button */}
+            {onDelete && ( // Only render if onDelete prop is provided
+              <Button
+                size="sm"
+                variant="ghost"
+                className="p-1 h-7 w-7 hover:bg-red-100 hover:text-red-600"
+                title="Delete highlight"
+                onClick={handleDelete}
+                disabled={isClipping || isNoteMode} // Disable while other actions are in progress
+              >
+                <Trash2 className="h-4 w-4" />
               </Button>
-            </>
+            )}
+            {/* Close Button */}
+            <button
+              onClick={onClose}
+              className="text-slate-500 hover:text-slate-700"
+              aria-label="Close"
+            >
+              <XIcon size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Highlighted Text */}
+        <div className="mb-3 text-sm text-slate-800 max-h-24 overflow-y-auto bg-slate-100 p-2 rounded border border-slate-200 italic">
+          "{highlight.text || highlight.position.text || "Selected text"}"
+        </div>
+
+        {/* Note Taking UI */}
+        {isNoteMode ? (
+          <div className="mb-4">
+            <textarea
+              className="w-full h-32 p-3 bg-yellow-50 border border-yellow-200 rounded-md shadow-inner text-slate-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
+              placeholder="Type your notes here..."
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+            />
+            <div className="flex justify-end space-x-2 mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelNote}
+                className="border-slate-300 text-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveNote}
+                disabled={isSavingNote}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              >
+                {isSavingNote ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin mr-1" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Note"
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* Summary Area - Only show when not in note mode */
+          <div className="mb-4 min-h-[3rem]">
+            <div className="text-sm text-slate-700">
+              {summary}
+            </div>
+          </div>
+        )}
+
+        {/* Display existing note if there is one and not in note mode */}
+        {!isNoteMode && noteText && (
+          <div className="mb-4 bg-yellow-50 p-3 rounded-md border border-yellow-200">
+            <h4 className="text-sm font-medium text-yellow-800 mb-1">Your Note:</h4>
+            <p className="text-sm text-slate-700 whitespace-pre-wrap">{noteText}</p>
+          </div>
+        )}
+
+        {/* Connected Memory Graph Display */}
+        {!isNoteMode && (
+          <div className="mb-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-slate-700">
+                Connected Memory Graph:
+              </label>
+              {isSessionActive && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleChangeGraph}
+                  className="p-1 h-6 text-xs hover:bg-slate-100"
+                  title="Change graph"
+                >
+                  <Settings className="h-3 w-3 mr-1" />
+                  Change
+                </Button>
+              )}
+            </div>
+            <div className="mt-1 p-2 bg-blue-50 border border-blue-200 rounded-md flex items-center">
+              <Database className="h-4 w-4 text-blue-600 mr-2" />
+              <span className="text-sm text-blue-800 font-medium">
+                {isSessionActive && sessionGraph 
+                  ? `${sessionGraph.name}${sessionGraph.isDefault ? ' (Default)' : ''}`
+                  : 'No graph connected'
+                }
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex flex-col space-y-2">
+          <div className="flex space-x-2">
+            {!isNoteMode && (
+              <>
+                {/* Clip Button */}
+                <Button
+                  onClick={handleClip}
+                  disabled={isClipping || clipStatus === 'success' || loadingGraphs} // Disable while clipping or on success
+                  className="flex-1 bg-royal-600 hover:bg-royal-700 text-white flex items-center justify-center gap-2"
+                >
+                  {clipStatus === 'idle' && (
+                    <>
+                      <Clipboard size={16} />
+                      <span>{!isSessionActive ? 'Connect & Clip' : 'Clip To Memory'}</span>
+                    </>
+                  )}
+                  {clipStatus === 'loading' && <><Loader2 size={16} className="animate-spin" /><span>Saving...</span></>}
+                  {clipStatus === 'success' && <><CheckCircle size={16} /><span>Saved!</span></>}
+                  {clipStatus === 'error' && <><XIcon size={16} /><span>Save Error</span></>}
+                </Button>
+
+                {/* Add to Copilot Chat Button */}
+                <Button
+                  onClick={handleAddToCopilotChat}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span>Add to Copilot Chat</span>
+                </Button>
+              </>
+            )}
+          </div>
+          
+          {/* Take Note Button - Only show when not in note mode */}
+          {!isNoteMode && (
+            <Button
+              onClick={handleTakeNote}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white w-full mt-2 flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              <span>Take Note</span>
+            </Button>
           )}
         </div>
-        
-        {/* Take Note Button - Only show when not in note mode */}
-        {!isNoteMode && (
-          <Button
-            onClick={handleTakeNote}
-            className="bg-yellow-500 hover:bg-yellow-600 text-white w-full mt-2 flex items-center justify-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 20h9"></path>
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-            </svg>
-            <span>Take Note</span>
-          </Button>
-        )}
-      </div>
 
-      {/* Styles */}
-      <style jsx global>{`
-        .typing-cursor {
-          display: inline-block;
-          width: 2px; /* More visible cursor */
-          height: 1em;
-          background-color: currentColor;
-          margin-left: 2px;
-          animation: blink 1s step-end infinite;
-        }
-        @keyframes blink {
-          from, to { opacity: 1; }
-          50% { opacity: 0; }
-        }
-        /* Basic prose styling adjustments for dark mode */
-        .dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4, .dark .prose h5, .dark .prose h6 { color: #f1f5f9; }
-        .dark .prose p, .dark .prose li, .dark .prose blockquote, .dark .prose td, .dark .prose th { color: #cbd5e1; }
-        .dark .prose strong { color: #f8fafc; }
-        .dark .prose code { color: #e2e8f0; background-color: #334155; padding: 0.1em 0.3em; border-radius: 0.25em; }
-        .dark .prose a { color: #7dd3fc; }
-        .dark .prose ul { list-style-type: disc; padding-left: 1.5em; } /* Ensure lists are styled */
-        .prose ul { list-style-type: disc; padding-left: 1.5em; } /* Ensure lists are styled for light mode */
-      `}</style>
-    </Card>
+        {/* Styles */}
+        <style jsx global>{`
+          .typing-cursor {
+            display: inline-block;
+            width: 2px; /* More visible cursor */
+            height: 1em;
+            background-color: currentColor;
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+          }
+          @keyframes blink {
+            from, to { opacity: 1; }
+            50% { opacity: 0; }
+          }
+          /* Basic prose styling adjustments */
+          .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { color: #1e293b; }
+          .prose p, .prose li, .prose blockquote, .prose td, .prose th { color: #475569; }
+          .prose strong { color: #0f172a; }
+          .prose code { color: #334155; background-color: #f1f5f9; padding: 0.1em 0.3em; border-radius: 0.25em; }
+          .prose a { color: #2563eb; }
+          .prose ul { list-style-type: disc; padding-left: 1.5em; }
+        `}</style>
+      </Card>
+
+      {/* Memory Graph Selection Modal */}
+      <MemoryGraphSelectionModal
+        isOpen={showGraphModal}
+        onClose={() => setShowGraphModal(false)}
+        onGraphSelected={handleGraphSelected}
+      />
+    </>
   )
 } 

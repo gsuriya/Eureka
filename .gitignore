@@ -28,3 +28,10 @@ next-env.d.ts
 
 # Uploaded PDF files
 /public/uploads/*.pdf
+/manim-backend/uploads/*
+/manim-backend/outputs/*
+/manim-backend/clips/*
+/manim-backend/jobs.json
+/manim-backend/venv/
+/manim-backend/__pycache__/
+/manim-backend/media/

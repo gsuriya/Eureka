@@ -15,14 +15,14 @@ import {
   ExternalLink,
   Key,
   Lightbulb,
-  Menu,
   Save,
   Share,
   Sparkles,
   MessageCircle,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { PapersSidebar } from "@/components/papers-sidebar"
+import { useReaderStore, PaperType } from "@/lib/reader-store"
+import { UploadPapersSidebar } from "@/components/upload-papers-sidebar"
 import { PaperTabs } from "@/components/paper-tabs"
 import { PDFViewer } from "@/components/pdf-viewer"
 import { useRouter } from "next/navigation"
@@ -106,55 +106,77 @@ const paperData = {
   },
 }
 
-// Mock open papers (adjust if needed based on _id)
-const initialOpenPapers = [
-  { id: "1", title: "Attention Is All You Need" }, // Keep using id here if PaperTabs expects it
-  { id: "2", title: "BERT: Pre-training of Deep Bidirectional Transformers" },
-]
-
-// Define type for paper state
-interface PaperType {
-  _id: string;
-  title: string;
-  authors: string[] | string;
-  abstract?: string;
-  year?: string;
-  venue?: string;
-  url?: string;
-  filePath?: string;
-  sections?: any[]; // Or a more specific type
-  originalName?: string;
-}
+// Removed initialOpenPapers to prevent resetting tabs
 
 export default function ReaderPage({ params }: { params: { id: string } }) {
   // Use React.use() to unwrap params as recommended by Next.js
   const unwrappedParams = use(params as any) as { id: string };
   const paperIdFromUrl = unwrappedParams.id;
   
-  const [paper, setPaper] = useState<PaperType | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [activePaperId, setActivePaperId] = useState(paperIdFromUrl || "")
-  const [openPapers, setOpenPapers] = useState<Array<{ id: string; title: string }>>([])
-  const [copilotChatOpen, setCopilotChatOpen] = useState(false)
+  const { openPapers, setOpenPapers, activePaperId, setActivePaperId, addPaper, removePaper, clearAllPapers, hasHydrated, setHasHydrated } = useReaderStore()
+  const [copilotChatOpen, setCopilotChatOpen] = useState(true)
   const [copilotAutoPrompt, setCopilotAutoPrompt] = useState<string>('')
+  const [forceExpandCopilot, setForceExpandCopilot] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
 
   const { toast } = useToast()
   const router = useRouter()
 
-  // Fetch paper data from API
+  // Get the current active paper from openPapers
+  const currentPaper = openPapers.find(p => p.id === activePaperId)?.paper || null;
+
+  // Quick synchronous check for existing tabs on mount to prevent flash
   useEffect(() => {
-    const fetchPaper = async (idToFetch: string) => {
+    const checkExistingTabs = () => {
+      try {
+        const saved = localStorage.getItem('reader-tabs-storage');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // If there are saved tabs, we know not to show empty state
+          if (parsed?.state?.openPapers?.length > 0) {
+            setIsInitialLoad(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking existing tabs:', error);
+      }
+      
+      // After quick check, proceed with full hydration
+      const rehydrate = async () => {
+        try {
+          await useReaderStore.persist.rehydrate();
+          setHasHydrated(true);
+          setIsInitialLoad(false);
+        } catch (error) {
+          console.error('Hydration failed:', error);
+          setHasHydrated(true);
+          setIsInitialLoad(false);
+        }
+      };
+      
+      if (!hasHydrated) {
+        rehydrate();
+      }
+    };
+    
+    checkExistingTabs();
+  }, [hasHydrated, setHasHydrated]);
+
+  // Fetch paper data from API (only on initial load)
+  useEffect(() => {
+    const fetchInitialPaper = async (idToFetch: string) => {
       if (!idToFetch) {
-         setLoading(false);
-         setPaper(null);
-         setActivePaperId("");
-         toast({ title: 'Error', description: 'No paper ID provided.', variant: 'destructive' });
          return;
       }
       
+      // Check if paper is already loaded in saved tabs
+      if (openPapers.some(p => p.id === idToFetch)) {
+        // Paper is already loaded, just switch to it
+        setActivePaperId(idToFetch);
+        return;
+      }
+      
       try {
-        setLoading(true);
         const response = await fetch(`/api/papers/${idToFetch}`);
         if (!response.ok) {
           throw new Error('Failed to fetch paper');
@@ -166,19 +188,12 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
         }
         
         const fetchedPaper: PaperType = data.paper;
-        setPaper(fetchedPaper);
-        
-        // Use the actual ID from the fetched paper
         const actualPaperId = fetchedPaper._id.toString();
-        setActivePaperId(actualPaperId);
         
-        // Add to open papers if not already there
-        setOpenPapers(prev => {
-          if (!prev.some(p => p.id === actualPaperId)) {
-            return [...prev, { id: actualPaperId, title: fetchedPaper.title }]
-          }
-          return prev;
-        });
+        // Add to open papers with full paper data
+        addPaper({ id: actualPaperId, title: fetchedPaper.title, paper: fetchedPaper });
+        
+        setActivePaperId(actualPaperId);
         
       } catch (error) {
         console.error('Error fetching paper:', error);
@@ -191,39 +206,110 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
         // Use mock data as fallback
         const mockPaper = paperData[idToFetch as keyof typeof paperData];
         if (mockPaper) {
-          setPaper(mockPaper as PaperType); // Assert type when using mock data
-          setActivePaperId(idToFetch); 
-          if(openPapers.length === 0) setOpenPapers(initialOpenPapers);
-        } else {
-          setActivePaperId("");
-          setPaper(null);
+          addPaper({ id: idToFetch, title: mockPaper.title, paper: mockPaper as PaperType });
+          setActivePaperId(idToFetch);
         }
-      } finally {
-        setLoading(false);
       }
     };
 
-    fetchPaper(paperIdFromUrl); // Fetch using ID from URL
+    // Only fetch if we have a paper ID from URL and it's not already loaded
+    // Don't auto-load if activePaperId is explicitly empty (user closed all tabs)
+    if (paperIdFromUrl && !openPapers.some(p => p.id === paperIdFromUrl) && hasHydrated) {
+      fetchInitialPaper(paperIdFromUrl);
+    } else if (paperIdFromUrl && openPapers.some(p => p.id === paperIdFromUrl) && openPapers.length > 0 && activePaperId !== paperIdFromUrl) {
+      // Paper is already loaded, just switch to it (but only if it's not already active)
+      setActivePaperId(paperIdFromUrl);
+    }
     
-  }, [paperIdFromUrl, toast]); // Depend only on URL ID and toast
-
-  const handlePaperSelect = (id: string) => {
-    // Navigate or set active ID - this seems okay
-    router.push(`/reader/${id}`);
-  };
+      }, [paperIdFromUrl, openPapers, addPaper, setActivePaperId, toast, hasHydrated]);
 
   const handleTabChange = (id: string) => {
-    // Navigate or set active ID
-     router.push(`/reader/${id}`);
+    // Only proceed if the tab is actually changing
+    if (id === activePaperId) {
+      return;
+    }
+    
+    // Verify the paper exists in open papers
+    const paperExists = openPapers.some(p => p.id === id);
+    if (!paperExists) {
+      console.error('Paper not found in open papers:', id);
+      return;
+    }
+    
+    // Just switch tabs without navigation - instant switching!
+    setActivePaperId(id);
+    // Update URL without page reload
+    window.history.replaceState(null, '', `/reader/${id}`);
+  };
+
+  const handlePaperClickFromSidebar = async (paperId: string) => {
+    // Check if paper is already in tabs, if so just switch to it
+    const existingTab = openPapers.find(p => p.id === paperId);
+    if (existingTab) {
+      // Just switch to existing tab - no loading!
+      setActivePaperId(paperId);
+      window.history.replaceState(null, '', `/reader/${paperId}`);
+      return;
+    }
+
+    // If not in tabs, fetch paper info and add as new tab
+    try {
+      const response = await fetch(`/api/papers/${paperId}`);
+      if (response.ok) {
+        const data = await response.json();
+        const fetchedPaper: PaperType = data.paper;
+        
+        // Add to open papers with full paper data
+        addPaper({ 
+          id: paperId, 
+          title: fetchedPaper.title, 
+          paper: fetchedPaper 
+        });
+        
+        // Switch to the new tab
+        setActivePaperId(paperId);
+        window.history.replaceState(null, '', `/reader/${paperId}`);
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to load paper',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching paper for tab:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load paper',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleTabClose = (id: string) => {
     const newOpenPapers = openPapers.filter((paper) => paper.id !== id);
-    setOpenPapers(newOpenPapers);
+    removePaper(id);
+    
+    // If we're closing the currently active tab, switch to another tab
     if (id === activePaperId && newOpenPapers.length > 0) {
-      router.push(`/reader/${newOpenPapers[0].id}`);
+      // Find the index of the closed tab to determine which tab to switch to
+      const closedTabIndex = openPapers.findIndex(p => p.id === id);
+      let nextTabIndex = closedTabIndex;
+      
+      // If we closed the last tab, go to the previous one
+      if (nextTabIndex >= newOpenPapers.length) {
+        nextTabIndex = newOpenPapers.length - 1;
+      }
+      
+      // Switch to the next tab without navigation - instant switching!
+      const nextPaperId = newOpenPapers[nextTabIndex].id;
+      setActivePaperId(nextPaperId);
+      window.history.replaceState(null, '', `/reader/${nextPaperId}`);
     } else if (newOpenPapers.length === 0) {
-       router.push('/'); // Go home if no papers left
+      // If no tabs left, clear active paper and navigate to base reader page
+      setActivePaperId('');
+      // Navigate to base reader page to prevent the useEffect from reloading the paper
+      window.history.replaceState(null, '', '/reader');
     }
   };
 
@@ -231,195 +317,446 @@ export default function ReaderPage({ params }: { params: { id: string } }) {
     // Set the auto-prompt text and open copilot chat
     setCopilotAutoPrompt(text);
     setCopilotChatOpen(true);
+    setForceExpandCopilot(true);
+    
+    // Reset force expand after a short delay
+    setTimeout(() => {
+      setForceExpandCopilot(false);
+    }, 100);
   };
 
-  // Effect to handle sidebar on resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setShowSidebar(false)
-      } else {
-        setShowSidebar(true)
-      }
-    }
+  const handlePaperDeleted = (paperId: string) => {
+    // Close the tab for the deleted paper
+    handleTabClose(paperId);
+  };
 
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [])
+  const handleAllPapersDeleted = () => {
+    // Close all tabs
+    clearAllPapers();
+  };
 
-  // Show loading state
-  if (loading) {
+
+
+
+
+
+
+  // Show loading state while hydrating or during initial load
+  if (!hasHydrated || isInitialLoad) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <h2 className="text-xl font-medium text-gray-600">Loading paper...</h2>
-        </div>
-      </div>
-    )
-  }
-
-  // Show not found state
-  if (!loading && !paper) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Paper not found</h1>
-          <p className="text-gray-500 mb-6">The requested paper could not be found.</p>
-          <Link href="/upload">
-            <Button>Upload a Paper</Button>
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
-  // Ensure paper is not null before rendering
-  if (!paper) return null; 
-
-  // Display the PDF if filePath exists
-  return (
-    <div className="flex flex-col min-h-screen bg-ivory">
-      {/* Header */}
-      <header className="sticky top-0 z-20 border-b bg-white shadow-sm">
-        <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setShowSidebar(!showSidebar)}>
-              <Menu className="h-5 w-5" />
-            </Button>
+      <div className="flex flex-col h-screen bg-ivory">
+        {/* Header */}
+        <header className="border-b shadow-sm bg-white">
+          <div className="flex h-16 items-center px-4 md:px-6">
             <Link href="/" className="flex items-center gap-2">
               <div className="bg-royal-500 p-1.5 rounded-lg">
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
-              <span className="font-bold text-royal-500 hidden md:inline">
-                Eureka
+              <span className="text-xl font-sans font-bold text-royal-500">
+                PaperTrail
               </span>
             </Link>
+            
+            {/* Centered Navigation */}
+            <div className="flex-1 flex justify-center">
+              <nav className="flex gap-6">
+                <Link href="/reader" className="font-sans font-bold text-royal-700 underline underline-offset-4">Reader</Link>
+                <Link href="/search" className="font-sans font-medium text-royal-500 hover:text-royal-600">Search</Link>
+                <Link href="/library" className="font-sans font-medium text-royal-500 hover:text-royal-600">Library</Link>
+                <Link href="/memory" className="font-sans font-medium text-royal-500 hover:text-royal-600">Memory</Link>
+              </nav>
+            </div>
+            
+            {/* Right spacer to balance the logo */}
+            <div className="w-[140px]"></div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Memory Button */}
-            <Link href="/memory">
-              <Button
-                variant="default"
-                className="bg-royal-500 hover:bg-royal-600 text-white"
-              >
-                <Lightbulb className="mr-2 h-4 w-4" />
-                Memory
-              </Button>
+        </header>
+
+        {/* Paper Tabs */}
+        <PaperTabs
+          papers={openPapers.map(p => ({ id: p.id, title: p.title }))}
+          activePaperId={activePaperId}
+          onTabChange={handleTabChange}
+          onTabClose={handleTabClose}
+        />
+
+        {/* Main Content with Sidebars */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Left Sidebar */}
+          <div className="absolute left-0 top-0 bottom-0 z-10">
+            <UploadPapersSidebar onPaperClick={handlePaperClickFromSidebar} onPaperDeleted={handlePaperDeleted} onAllPapersDeleted={handleAllPapersDeleted} />
+          </div>
+
+          {/* Center Content - Loading State */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center space-y-6 max-w-md opacity-0">
+              {/* Invisible placeholder to prevent layout shift */}
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="absolute right-0 top-0 bottom-0 z-10">
+            <CopilotChat
+              isOpen={true}
+              onClose={() => {
+                setCopilotChatOpen(false);
+                setCopilotAutoPrompt('');
+              }}
+              paperId={activePaperId}
+              autoPrompt={copilotAutoPrompt}
+              forceExpand={forceExpandCopilot}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show blank state if no tabs are open (only after hydration is complete)
+  if (hasHydrated && !isInitialLoad && openPapers.length === 0) {
+    return (
+      <div className="flex flex-col h-screen bg-ivory">
+        {/* Header */}
+        <header className="border-b shadow-sm bg-white">
+          <div className="flex h-16 items-center px-4 md:px-6">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="bg-royal-500 p-1.5 rounded-lg">
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-sans font-bold text-royal-500">
+                PaperTrail
+              </span>
             </Link>
+            
+            {/* Centered Navigation */}
+            <div className="flex-1 flex justify-center">
+              <nav className="flex gap-6">
+                <Link href="/reader" className="font-sans font-bold text-royal-700 underline underline-offset-4">Reader</Link>
+                <Link href="/search" className="font-sans font-medium text-royal-500 hover:text-royal-600">Search</Link>
+                <Link href="/library" className="font-sans font-medium text-royal-500 hover:text-royal-600">Library</Link>
+                <Link href="/memory" className="font-sans font-medium text-royal-500 hover:text-royal-600">Memory</Link>
+              </nav>
+            </div>
+            
+            {/* Right spacer to balance the logo */}
+            <div className="w-[140px]"></div>
           </div>
+        </header>
+
+        {/* Paper Tabs */}
+        <PaperTabs
+          papers={openPapers.map(p => ({ id: p.id, title: p.title }))}
+          activePaperId={activePaperId}
+          onTabChange={handleTabChange}
+          onTabClose={handleTabClose}
+        />
+
+        {/* Main Content with Sidebars */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Left Sidebar */}
+          <div className="absolute left-0 top-0 bottom-0 z-10">
+            <UploadPapersSidebar onPaperClick={handlePaperClickFromSidebar} onPaperDeleted={handlePaperDeleted} onAllPapersDeleted={handleAllPapersDeleted} />
+          </div>
+
+          {/* Center Content - Always Centered */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center space-y-6 max-w-md">
+              <div className="inline-flex items-center justify-center rounded-full bg-royal-100 p-6 text-royal-500">
+                <BookOpen className="h-12 w-12" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold text-gray-800">No Tabs Open</h1>
+                <p className="text-gray-500">
+                  Click on a paper from the sidebar to open a new tab, or upload a new paper to get started.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="absolute right-0 top-0 bottom-0 z-10">
+          <CopilotChat
+            isOpen={true}
+            onClose={() => {
+              setCopilotChatOpen(false);
+              setCopilotAutoPrompt(''); // Clear auto-prompt when closing
+            }}
+            paperId={activePaperId}
+            autoPrompt={copilotAutoPrompt}
+              forceExpand={forceExpandCopilot}
+          />
+          </div>
+        </div>
+      </div>
+    );
+  } 
+
+
+
+  // Display the PDF if filePath exists - fall back to blank state if no current paper (but not during initial load)
+  if (!currentPaper && hasHydrated && !isInitialLoad) {
+    return (
+      <div className="flex flex-col h-screen bg-ivory">
+        {/* Header */}
+        <header className="border-b shadow-sm bg-white">
+          <div className="flex h-16 items-center px-4 md:px-6">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="bg-royal-500 p-1.5 rounded-lg">
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-sans font-bold text-royal-500">
+                PaperTrail
+              </span>
+            </Link>
+            
+            {/* Centered Navigation */}
+            <div className="flex-1 flex justify-center">
+              <nav className="flex gap-6">
+                <Link href="/reader" className="font-sans font-bold text-royal-700 underline underline-offset-4">Reader</Link>
+                <Link href="/search" className="font-sans font-medium text-royal-500 hover:text-royal-600">Search</Link>
+                <Link href="/library" className="font-sans font-medium text-royal-500 hover:text-royal-600">Library</Link>
+                <Link href="/memory" className="font-sans font-medium text-royal-500 hover:text-royal-600">Memory</Link>
+              </nav>
+            </div>
+            
+            {/* Right spacer to balance the logo */}
+            <div className="w-[140px]"></div>
+          </div>
+        </header>
+
+        {/* Paper Tabs */}
+        <PaperTabs
+          papers={openPapers.map(p => ({ id: p.id, title: p.title }))}
+          activePaperId={activePaperId}
+          onTabChange={handleTabChange}
+          onTabClose={handleTabClose}
+        />
+
+        {/* Main Content with Sidebars */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Left Sidebar */}
+          <div className="absolute left-0 top-0 bottom-0 z-10">
+            <UploadPapersSidebar onPaperClick={handlePaperClickFromSidebar} onPaperDeleted={handlePaperDeleted} onAllPapersDeleted={handleAllPapersDeleted} />
+          </div>
+
+          {/* Center Content - Always Centered */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center space-y-6 max-w-md">
+              <div className="inline-flex items-center justify-center rounded-full bg-royal-100 p-6 text-royal-500">
+                <BookOpen className="h-12 w-12" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold text-gray-800">No Papers Open</h1>
+                <p className="text-gray-500">
+                  Click on a paper from the sidebar to open a new tab, or upload a new paper to get started.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="absolute right-0 top-0 bottom-0 z-10">
+          <CopilotChat
+            isOpen={true}
+            onClose={() => {
+              setCopilotChatOpen(false);
+              setCopilotAutoPrompt(''); // Clear auto-prompt when closing
+            }}
+            paperId={activePaperId}
+            autoPrompt={copilotAutoPrompt}
+              forceExpand={forceExpandCopilot}
+          />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If no current paper but we have tabs, show empty paper state
+  if (!currentPaper && openPapers.length > 0) {
+    return (
+      <div className="flex flex-col h-screen bg-ivory">
+        {/* Header */}
+        <header className="border-b shadow-sm bg-white">
+          <div className="flex h-16 items-center px-4 md:px-6">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="bg-royal-500 p-1.5 rounded-lg">
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-sans font-bold text-royal-500">
+                PaperTrail
+              </span>
+            </Link>
+            
+            {/* Centered Navigation */}
+            <div className="flex-1 flex justify-center">
+              <nav className="flex gap-6">
+                <Link href="/reader" className="font-sans font-bold text-royal-700 underline underline-offset-4">Reader</Link>
+                <Link href="/search" className="font-sans font-medium text-royal-500 hover:text-royal-600">Search</Link>
+                <Link href="/library" className="font-sans font-medium text-royal-500 hover:text-royal-600">Library</Link>
+                <Link href="/memory" className="font-sans font-medium text-royal-500 hover:text-royal-600">Memory</Link>
+              </nav>
+            </div>
+            
+            {/* Right spacer to balance the logo */}
+            <div className="w-[140px]"></div>
+          </div>
+        </header>
+
+        {/* Paper Tabs */}
+        <PaperTabs
+          papers={openPapers.map(p => ({ id: p.id, title: p.title }))}
+          activePaperId={activePaperId}
+          onTabChange={handleTabChange}
+          onTabClose={handleTabClose}
+        />
+
+        {/* Main Content with Sidebars */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Left Sidebar */}
+          <div className="absolute left-0 top-0 bottom-0 z-10">
+            <UploadPapersSidebar onPaperClick={handlePaperClickFromSidebar} onPaperDeleted={handlePaperDeleted} onAllPapersDeleted={handleAllPapersDeleted} />
+          </div>
+
+          {/* Center Content - Select a tab message */}
+          <div className="absolute top-0 bottom-0 left-12 right-80 flex items-center justify-center">
+            <div className="text-center space-y-6 max-w-md">
+              <div className="inline-flex items-center justify-center rounded-full bg-royal-100 p-6 text-royal-500">
+                <BookOpen className="h-12 w-12" />
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold text-gray-800">Select a Tab</h1>
+                <p className="text-gray-500">
+                  Click on one of the tabs above to view a paper.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="absolute right-0 top-0 bottom-0 z-10">
+            <CopilotChat
+              isOpen={true}
+              onClose={() => {
+                setCopilotChatOpen(false);
+                setCopilotAutoPrompt('');
+              }}
+              paperId={activePaperId}
+              autoPrompt={copilotAutoPrompt}
+              forceExpand={forceExpandCopilot}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main content with current paper
+  if (!currentPaper) {
+    return null; // This should not happen due to above checks
+  }
+
+  return (
+    <div className="flex flex-col h-screen bg-ivory">
+      {/* Header */}
+      <header className="border-b shadow-sm bg-white">
+        <div className="flex h-16 items-center px-4 md:px-6">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="bg-royal-500 p-1.5 rounded-lg">
+              <BookOpen className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-sans font-bold text-royal-500">
+              PaperTrail
+            </span>
+          </Link>
+          
+          {/* Centered Navigation */}
+          <div className="flex-1 flex justify-center">
+            <nav className="flex gap-6">
+              <Link href="/reader" className="font-sans font-bold text-royal-700 underline underline-offset-4">Reader</Link>
+              <Link href="/search" className="font-sans font-medium text-royal-500 hover:text-royal-600">Search</Link>
+              <Link href="/library" className="font-sans font-medium text-royal-500 hover:text-royal-600">Library</Link>
+              <Link href="/memory" className="font-sans font-medium text-royal-500 hover:text-royal-600">Memory</Link>
+            </nav>
+          </div>
+          
+          {/* Right spacer to balance the logo */}
+          <div className="w-[140px]"></div>
         </div>
       </header>
 
-      {/* Paper Tabs */}
-      <PaperTabs
-        papers={openPapers}
-        activePaperId={activePaperId}
-        onTabChange={handleTabChange}
-        onTabClose={handleTabClose}
-      />
-
-      {/* Main Content with Sidebar */}
-      <div className="flex flex-1 relative">
-        {/* Sidebar */}
-        <PapersSidebar
-          isOpen={showSidebar}
-          onClose={() => setShowSidebar(false)}
+              {/* Paper Tabs */}
+        <PaperTabs
+          papers={openPapers.map(p => ({ id: p.id, title: p.title }))}
           activePaperId={activePaperId}
+          onTabChange={handleTabChange}
+          onTabClose={handleTabClose}
         />
 
-        {/* Main Content */}
-        <div className={`flex-1 transition-all duration-200 ${showSidebar ? "md:ml-72" : ""}`}>
-          <main className="py-8">
-            <div className="container max-w-7xl mx-auto px-4">
-              {/* Paper Metadata */}
-              <div className="mb-8 space-y-4">
-                <h1 className="text-3xl font-serif font-bold">{paper.title}</h1>
-                {paper.authors && paper.authors.length > 0 && (
-                  <div className="text-gray-500">
-                    <p>{Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors}</p>
-                    {paper.venue && paper.year && (
-                      <p className="mt-1">
-                        {paper.venue}, {paper.year}
-                      </p>
-                    )}
-                  </div>
-                )}
-                {paper.url && (
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={paper.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-blue-600 hover:underline flex items-center"
-                    >
-                      View original paper <ExternalLink className="ml-1 h-3 w-3" />
-                    </a>
-                  </div>
-                )}
+        {/* Main Content with Sidebars */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Left Sidebar */}
+          <div className="absolute left-0 top-0 bottom-0 z-10">
+            <UploadPapersSidebar onPaperClick={handlePaperClickFromSidebar} onPaperDeleted={handlePaperDeleted} onAllPapersDeleted={handleAllPapersDeleted} />
+          </div>
+
+          {/* Center Content - Always Centered */}
+          <div className="absolute top-0 bottom-0 left-0 right-0 flex flex-col items-center justify-center overflow-auto">
+            {currentPaper.filePath && (
+              <div className="w-full max-w-6xl overflow-hidden relative">
+                <PDFViewer 
+                  url={currentPaper.filePath} 
+                  fileName={currentPaper.originalName || currentPaper.title}
+                  paperId={activePaperId}
+                  onAddToCopilotChat={handleAddToCopilotChat}
+                />
               </div>
-
-              {/* PDF Viewer for uploaded PDFs - pass correct paperId */}
-              {paper.filePath && (
-                <div className="mb-8 w-full">
-                  <PDFViewer 
-                    url={paper.filePath} 
-                    fileName={paper.originalName || paper.title}
-                    paperId={activePaperId}
-                    onAddToCopilotChat={handleAddToCopilotChat}
-                  />
-                </div>
-              )}
-
-              {/* Abstract */}
-              {paper.abstract && (
-                <div className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4 text-gray-800">Abstract</h2>
-                  <div className="text-gray-700 leading-relaxed bg-white p-6 rounded-lg border shadow-sm">
-                    {paper.abstract}
-                  </div>
-                </div>
-              )}
-
-              {/* Paper Content - only show for mock data or extracted content */}
-              {paper.sections && paper.sections.length > 0 && (
-                <div className="space-y-8">
-                  {paper.sections.map((section: any, index: number) => (
-                    <div key={index} className="space-y-4">
-                      <h2 className="text-xl font-semibold text-gray-800">{section.title}</h2>
-                      <div className="text-gray-700 leading-relaxed whitespace-pre-line bg-white p-6 rounded-lg border shadow-sm">
-                        {section.content}
+            )}
+            {/* Abstract and Sections - Centered (only if no PDF) */}
+            {!currentPaper.filePath && (
+              <div className="w-full max-w-6xl overflow-auto relative">
+                <main className="py-8 px-4">
+                  {/* Abstract */}
+                  {currentPaper.abstract && (
+                    <div className="mb-8">
+                      <h2 className="text-xl font-semibold mb-4 text-gray-800">Abstract</h2>
+                      <div className="text-gray-700 leading-relaxed bg-white p-6 rounded-lg border shadow-sm">
+                        {currentPaper.abstract}
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </main>
+                  )}
+                  {/* Paper Content - only show for mock data or extracted content */}
+                  {currentPaper.sections && currentPaper.sections.length > 0 && (
+                    <div className="space-y-8">
+                      {currentPaper.sections.map((section: any, index: number) => (
+                        <div key={index} className="space-y-4">
+                          <h2 className="text-xl font-semibold text-gray-800">{section.title}</h2>
+                          <div className="text-gray-700 leading-relaxed whitespace-pre-line bg-white p-6 rounded-lg border shadow-sm">
+                            {section.content}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </main>
+              </div>
+            )}
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="absolute right-0 top-0 bottom-0 z-10">
+            <CopilotChat
+              isOpen={true}
+              onClose={() => {
+                setCopilotChatOpen(false);
+                setCopilotAutoPrompt(''); // Clear auto-prompt when closing
+              }}
+              paperId={activePaperId}
+              autoPrompt={copilotAutoPrompt}
+              forceExpand={forceExpandCopilot}
+            />
+          </div>
         </div>
       </div>
-
-      {/* Floating Copilot Chat Button */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <Button
-          onClick={() => setCopilotChatOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-200"
-          size="lg"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-      </div>
-
-      {/* Copilot Chat */}
-      <CopilotChat
-        isOpen={copilotChatOpen}
-        onClose={() => {
-          setCopilotChatOpen(false);
-          setCopilotAutoPrompt(''); // Clear auto-prompt when closing
-        }}
-        paperId={activePaperId}
-        autoPrompt={copilotAutoPrompt}
-      />
-    </div>
-  )
-}
+    )
+  }

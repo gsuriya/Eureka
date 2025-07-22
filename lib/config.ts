@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // MongoDB Configuration
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority';
-const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || 'eureka';
+const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || 'papertrail';
 
 // Gemini API Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'your_gemini_api_key_here';

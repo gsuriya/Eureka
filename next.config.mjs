@@ -9,23 +9,19 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  webpack: (config) => {
-    // Handle canvas dependency
-    config.resolve.alias.canvas = false;
-    
-    // Exclude certain modules from server build
-    config.externals = [...(config.externals || []), { canvas: "canvas" }];
-    
-    // Fallbacks for Node modules
-    config.resolve.fallback = { 
-      ...config.resolve.fallback, 
-      fs: false,
-      path: false,
-      process: false,
-      util: false,
-      zlib: false,
-      stream: false,
-    };
+  webpack: (config, { isServer }) => {
+    // This is a workaround for a bug in Next.js where it tries to bundle
+    // canvas on the server.
+    config.externals = [...config.externals, { canvas: "canvas" }];
+
+    // This is the definitive fix. We are telling webpack to not bundle these
+    // packages. They will be available on the server at runtime.
+    config.externals.push(
+      '@browserbasehq/stagehand',
+      'puppeteer',
+      'playwright-core',
+      'electron'
+    );
     
     return config;
   },
