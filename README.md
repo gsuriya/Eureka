@@ -53,26 +53,23 @@ paper-trail-unified/
 ### Prerequisites
 - Node.js 18+ and npm/yarn
 - Python 3.8+
-- MongoDB instance
-- OpenAI API key (for embeddings)
-- Google Gemini API key (for AI responses)
-- LMNT API key (optional, for premium voice)
+- MongoDB Atlas account
+- **All required API keys** (see Configuration section below)
 
-### 1. Frontend Setup
+### 1. Environment Setup
+
+**⚠️ IMPORTANT:** Before starting, you must set up all required API keys. See the [Configuration section](#-configuration) below for the complete list of required services and how to obtain API keys.
 
 ```bash
+# Create your .env file with all required API keys
+# Copy the template from the Configuration section below
+touch .env
+
 # Install dependencies
 npm install
-
-# Set up environment variables
-cp .env.example .env.local
-
-# Configure your .env.local:
-GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_key
-OPENAI_API_KEY=your_openai_key
-MONGODB_URI=your_mongodb_connection
-MANIM_SERVER_URL=http://localhost:8000
 ```
+
+### 2. Frontend Setup
 
 ```bash
 # Start the frontend
@@ -81,7 +78,7 @@ npm run dev
 
 The frontend will be available at `http://localhost:3000`
 
-### 2. Video Generation Backend Setup
+### 3. Video Generation Backend Setup
 
 ```bash
 # Navigate to manim backend
@@ -134,22 +131,88 @@ The backend will be available at `http://localhost:8000`
 
 ## 🔧 Configuration
 
-### Environment Variables
+### Environment Variables Setup
+
+Create a `.env` file in the root directory with the following environment variables. **All of these API keys are required** for the application to function properly:
 
 ```bash
-# Required APIs
-GOOGLE_GENERATIVE_AI_API_KEY=      # Gemini for AI responses
-OPENAI_API_KEY=                    # OpenAI for embeddings
-MONGODB_URI=                       # MongoDB connection
+# 🎬 Video Generation Backend
+MANIM_SERVER_URL=http://localhost:8000/
 
-# Optional APIs
-LMNT_API_KEY=                      # Premium voice synthesis
-BROWSERBASE_API_KEY=              # Web search capabilities
-BROWSERBASE_PROJECT_ID=
+# 🗄️ Database Configuration
+MONGODB_URI=your_mongodb_connection_string_here
+MONGODB_DB_NAME=your_database_name_here
 
-# Server Configuration
-MANIM_SERVER_URL=http://localhost:8000
+# 🤖 AI & Language Models
+GEMINI_API_KEY=your_gemini_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
+ANTHROPIC_API_KEY=your_anthropic_claude_api_key_here
+GOOGLE_API_KEY=your_google_api_key_here
+
+# 🔍 Search & Data
+EXA_API_KEY=your_exa_search_api_key_here
+HF_API_TOKEN=your_hugging_face_api_token_here
+
+# 🌐 Web Extraction
+BROWSERBASE_API_KEY=your_browserbase_api_key_here
+BROWSERBASE_PROJECT_ID=your_browserbase_project_id_here
+
+# 🎵 Voice Synthesis
+LMNT_API_KEY=your_lmnt_voice_api_key_here
+VOICE_MODEL=brandon
+
+# 🔧 Application Configuration
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### 🔑 Required API Keys & Services
+
+You need to obtain API keys from the following services:
+
+1. **MongoDB Atlas** (`MONGODB_URI`, `MONGODB_DB_NAME`)
+   - Create a free cluster at [MongoDB Atlas](https://www.mongodb.com/atlas)
+   - Get your connection string and create a database
+
+2. **Google AI Studio** (`GEMINI_API_KEY`, `GOOGLE_API_KEY`)
+   - Get your Gemini API key at [Google AI Studio](https://makersuite.google.com/app/apikey)
+
+3. **OpenAI** (`OPENAI_API_KEY`)
+   - Create an API key at [OpenAI Platform](https://platform.openai.com/api-keys)
+
+4. **Anthropic Claude** (`ANTHROPIC_API_KEY`)
+   - Get your Claude API key at [Anthropic Console](https://console.anthropic.com/)
+
+5. **Exa Search** (`EXA_API_KEY`)
+   - Sign up for an API key at [Exa](https://exa.ai/)
+
+6. **Hugging Face** (`HF_API_TOKEN`)
+   - Create a token at [Hugging Face](https://huggingface.co/settings/tokens)
+
+7. **Browserbase** (`BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`)
+   - Get API credentials at [Browserbase](https://www.browserbase.com/)
+
+8. **LMNT Voice** (`LMNT_API_KEY`)
+   - Sign up for voice synthesis at [LMNT](https://lmnt.com/)
+
+### 📋 Environment File Template
+
+Copy this template to your `.env` file and replace the placeholder values:
+
+```bash
+# Copy and paste this template into your .env file
+MANIM_SERVER_URL=http://localhost:8000/
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB_NAME=your_app_database
+GEMINI_API_KEY=your_actual_gemini_key
+HF_API_TOKEN=your_actual_hf_token
+OPENAI_API_KEY=your_actual_openai_key
+EXA_API_KEY=your_actual_exa_key
+BROWSERBASE_API_KEY=your_actual_browserbase_key
+BROWSERBASE_PROJECT_ID=your_actual_browserbase_project_id
+ANTHROPIC_API_KEY=your_actual_anthropic_key
+LMNT_API_KEY=your_actual_lmnt_key
+VOICE_MODEL=brandon
+GOOGLE_API_KEY=your_actual_google_key
 ```
 
 ### Backend Configuration (manim-backend/.env)
